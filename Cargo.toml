@@ -1,0 +1,8 @@
+[package]
+name = "lang"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+enum-map = "2.7.3"
+nom = "8.0.0"
