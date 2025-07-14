@@ -14,7 +14,7 @@ use crate::frontend::parsers::common::precedence::{
     Assoc, Operation, binary_op, precedence, unary_op,
 };
 use crate::frontend::parsers::common::string::parse_string;
-use crate::frontend::parsers::common::ws;
+use crate::frontend::parsers::common::{parse_ident, ws};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
 
 #[derive(Clone, Debug, PartialEq, Eq, Enum)]
@@ -67,6 +67,7 @@ pub enum Expr<'a>
 {
     Literal(Literal),
     Ident(&'a str),
+    Call(&'a str, Vec<Expr<'a>>),
     UnaryOp(UnaryOpMode, _Expr<'a>),
     BinaryOp(BinOpMode, _Expr<'a>, _Expr<'a>),
     Stmt(Stmt<'a>),
@@ -90,15 +91,14 @@ fn parse_literal(input: &str) -> IResult<&str, Expr>
     .map(|(rem, l)| (rem, Expr::Literal(l)))
 }
 
-fn parse_ident(input: &str) -> IResult<&str, Expr>
+fn parse_call(input: &str) -> IResult<&str, Expr>
 {
-    // Currently allows for keywords as identifiers. TODO: Correct this
-    recognize(pair(
-        alt((alpha1, tag("_"))),
-        many0_count(alt((alphanumeric1, tag("_")))),
-    ))
+    (
+        parse_ident,
+        ws(delimited(char('('), separated_list0(ws(char(',')), parse_expr), char(')')))
+    )
+    .map(|(id, params)| Expr::Call(id, params))
     .parse(input)
-    .map(|(rem, id)| (rem, Expr::Ident(id)))
 }
 
 fn parse_sub_expr(input: &str) -> IResult<&str, Expr>
@@ -134,7 +134,7 @@ pub fn parse_expr(input: &str) -> IResult<&str, Expr>
             .into_array()),
         ws(alt((
             parse_literal,
-            parse_ident,
+            parse_ident.map(|id| Expr::Ident(id)),
             parse_sub_expr,
             parse_block,
             parse_stmt.map(|x| Expr::Stmt(x)),
