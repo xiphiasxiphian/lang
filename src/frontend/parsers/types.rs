@@ -12,6 +12,7 @@ use nom::{IResult, Parser};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type
 {
+    Void,
     BasicType(BasicType),
     Array(Box<Type>),
 }
@@ -52,5 +53,9 @@ fn parse_array(input: &str) -> IResult<&str, Type>
 
 pub fn parse_type(input: &str) -> IResult<&str, Type>
 {
-    alt((parse_basic_type, parse_array)).parse(input)
+    alt((
+        value(Type::Void, tag("void")),
+        parse_basic_type,
+        parse_array
+    )).parse(input)
 }

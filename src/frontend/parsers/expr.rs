@@ -4,10 +4,10 @@ use enum_map::{Enum, EnumMap, enum_map};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::char;
-use nom::character::complete::{alpha1, alphanumeric1, anychar, i32, multispace0};
-use nom::combinator::{cut, fail, map, recognize, value};
-use nom::multi::{many0, many0_count, separated_list0};
-use nom::sequence::{delimited, pair, preceded, terminated};
+use nom::character::complete::{anychar, i32, multispace0};
+use nom::combinator::{cut, fail, map, value};
+use nom::multi::separated_list0;
+use nom::sequence::{delimited, preceded};
 use nom::{IResult, Parser};
 
 use crate::frontend::parsers::common::precedence::{
@@ -18,13 +18,13 @@ use crate::frontend::parsers::common::{parse_ident, ws};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
 
 #[derive(Clone, Debug, PartialEq, Eq, Enum)]
-enum UnaryOpMode
+pub enum UnaryOpMode
 {
     Neg,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Enum)]
-enum BinOpMode
+pub enum BinOpMode
 {
     Add,
     Sub,
@@ -87,8 +87,8 @@ fn parse_literal(input: &str) -> IResult<&str, Expr>
         ),
         map(parse_string, |s| Literal::String(s)),
     ))
+    .map(|l| Expr::Literal(l))
     .parse(input)
-    .map(|(rem, l)| (rem, Expr::Literal(l)))
 }
 
 fn parse_call(input: &str) -> IResult<&str, Expr>
@@ -135,6 +135,7 @@ pub fn parse_expr(input: &str) -> IResult<&str, Expr>
         ws(alt((
             parse_literal,
             parse_ident.map(|id| Expr::Ident(id)),
+            parse_call,
             parse_sub_expr,
             parse_block,
             parse_stmt.map(|x| Expr::Stmt(x)),
