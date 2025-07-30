@@ -31,7 +31,7 @@ pub enum Stmt<'a>
     {
         cond: _Expr<'a>,
         tt: _Expr<'a>,
-        ff: _Expr<'a>,
+        ff: Option<_Expr<'a>>,
     },
     While
     {
@@ -70,7 +70,7 @@ fn parse_if(input: &str) -> IResult<&str, Stmt>
         .map(|(cond, tt, ff)| Stmt::If {
             cond: Box::new(cond),
             tt: Box::new(tt),
-            ff: Box::new(ff.unwrap_or(Expr::Block(vec![]))),
+            ff: ff.map(|x| Box::new(x)),
         })
         .parse(input)
 }
@@ -133,8 +133,14 @@ mod stmt_tests
             parse_if("if (true) { 32 } else { 42 }").unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(true))),
-                tt: Box::new(Expr::Block(vec!(Expr::Literal(Literal::Int(32))))),
-                ff: Box::new(Expr::Block(vec!(Expr::Literal(Literal::Int(42))))),
+                tt: Box::new(Expr::Block(
+                    vec!(),
+                    Some(Box::new(Expr::Literal(Literal::Int(32))))
+                )),
+                ff: Some(Box::new(Expr::Block(
+                    vec!(),
+                    Some(Box::new(Expr::Literal(Literal::Int(42))))
+                ))),
             }
         );
 
@@ -142,8 +148,11 @@ mod stmt_tests
             parse_if("if (false) { 50 }").unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(false))),
-                tt: Box::new(Expr::Block(vec!(Expr::Literal(Literal::Int(50))))),
-                ff: Box::new(Expr::Block(vec!()))
+                tt: Box::new(Expr::Block(
+                    vec!(),
+                    Some(Box::new(Expr::Literal(Literal::Int(50))))
+                )),
+                ff: None
             }
         );
 
@@ -151,8 +160,8 @@ mod stmt_tests
             parse_if("if (false) {  }").unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(false))),
-                tt: Box::new(Expr::Block(vec!())),
-                ff: Box::new(Expr::Block(vec!()))
+                tt: Box::new(Expr::Block(vec!(), None)),
+                ff: None
             }
         )
     }

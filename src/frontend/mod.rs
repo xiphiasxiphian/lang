@@ -1,5 +1,5 @@
-use crate::frontend::parsers::parse_prog;
 use crate::frontend::parsers::Prog;
+use crate::frontend::parsers::parse_prog;
 
 pub mod parsers;
 pub mod semantic;

@@ -56,6 +56,7 @@ pub fn parse_type(input: &str) -> IResult<&str, Type>
     alt((
         value(Type::Void, tag("void")),
         parse_basic_type,
-        parse_array
-    )).parse(input)
+        parse_array,
+    ))
+    .parse(input)
 }

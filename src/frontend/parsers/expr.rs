@@ -5,9 +5,9 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::char;
 use nom::character::complete::{anychar, i32, multispace0};
-use nom::combinator::{cut, fail, map, value};
-use nom::multi::separated_list0;
-use nom::sequence::{delimited, preceded};
+use nom::combinator::{cut, fail, map, opt, value};
+use nom::multi::{many0, separated_list0};
+use nom::sequence::{delimited, preceded, terminated};
 use nom::{IResult, Parser};
 
 use crate::frontend::parsers::common::precedence::{
@@ -21,6 +21,7 @@ use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
 pub enum UnaryOpMode
 {
     Neg,
+    Not,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Enum)]
@@ -36,7 +37,8 @@ static UNARY_OP_SYMS: LazyLock<EnumMap<UnaryOpMode, (usize, &'static str)>> = La
     use UnaryOpMode::*;
 
     enum_map! {
-        Neg => (1, "-")
+        Neg => (1, "-"),
+        Not => (1, "!"),
     }
 });
 
@@ -71,7 +73,7 @@ pub enum Expr<'a>
     UnaryOp(UnaryOpMode, _Expr<'a>),
     BinaryOp(BinOpMode, _Expr<'a>, _Expr<'a>),
     Stmt(Stmt<'a>),
-    Block(Vec<Expr<'a>>),
+    Block(Vec<Expr<'a>>, Option<_Expr<'a>>),
 }
 
 fn parse_literal(input: &str) -> IResult<&str, Expr>
@@ -95,10 +97,14 @@ fn parse_call(input: &str) -> IResult<&str, Expr>
 {
     (
         parse_ident,
-        ws(delimited(char('('), separated_list0(ws(char(',')), parse_expr), char(')')))
+        ws(delimited(
+            char('('),
+            separated_list0(ws(char(',')), parse_expr),
+            char(')'),
+        )),
     )
-    .map(|(id, params)| Expr::Call(id, params))
-    .parse(input)
+        .map(|(id, params)| Expr::Call(id, params))
+        .parse(input)
 }
 
 fn parse_sub_expr(input: &str) -> IResult<&str, Expr>
@@ -115,10 +121,13 @@ pub fn parse_block(input: &str) -> IResult<&str, Expr>
 {
     ws(delimited(
         char('{'),
-        ws(separated_list0(ws(char(';')), parse_expr)),
+        ws((
+            ws(many0(terminated(parse_expr, ws(char(';'))))),
+            ws(opt(parse_expr)),
+        )),
         char('}'),
     ))
-    .map(|x| Expr::Block(x))
+    .map(|(exs, ret)| Expr::Block(exs, ret.map(|x| Box::new(x))))
     .parse(input)
 }
 
@@ -162,7 +171,10 @@ mod expr_test
     #[test]
     fn parse_empty_block()
     {
-        assert_eq!(parse_block("{  \n   }").unwrap().1, Expr::Block(vec!()))
+        assert_eq!(
+            parse_block("{  \n   }").unwrap().1,
+            Expr::Block(vec!(), None)
+        )
     }
 
     #[test]

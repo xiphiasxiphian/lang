@@ -71,7 +71,7 @@ mod tests
                     ("b", Type::BasicType(BasicType::Int))
                 ],
                 return_type: Type::BasicType(BasicType::Int),
-                block: Expr::Block(vec!())
+                block: Expr::Block(vec!(), None)
             }
         )
     }
