@@ -1,0 +1,12 @@
+fun square(a: int) -> int
+{
+    const calc = fetch Calculator;
+    calc.times(a, a)
+}
+
+fun main(args: [string]) -> ()
+{
+    const calc <- Calculator();
+
+    println(square(5))
+}
