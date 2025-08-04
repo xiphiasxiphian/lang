@@ -14,10 +14,10 @@ use crate::frontend::parsers::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct Func<'a>
 {
-    name: &'a str,
-    parameters: Vec<(&'a str, Type)>,
-    return_type: Type,
-    block: Expr<'a>,
+    pub name: &'a str,
+    pub parameters: Vec<(&'a str, Type)>,
+    pub return_type: Type,
+    pub block: Expr<'a>,
 }
 
 fn parse_parameter(input: &str) -> IResult<&str, (&str, Type)>

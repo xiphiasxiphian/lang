@@ -79,15 +79,14 @@ pub enum Expr<'a>
 fn parse_literal(input: &str) -> IResult<&str, Expr>
 {
     alt((
-        map(i32, |x| Literal::Int(x)),
-        map(delimited(char('\''), anychar, char('\'')), |c| {
+        i32.map(|x| Literal::Int(x)),
+        delimited(char('\''), anychar, char('\'')).map(|c| {
             Literal::Char(c)
         }),
-        map(
-            alt((value(true, tag("true")), value(false, tag("false")))),
+        alt((value(true, tag("true")), value(false, tag("false")))).map(
             |b| Literal::Bool(b),
         ),
-        map(parse_string, |s| Literal::String(s)),
+        parse_string.map(|s| Literal::String(s)),
     ))
     .map(|l| Expr::Literal(l))
     .parse(input)
@@ -103,8 +102,8 @@ fn parse_call(input: &str) -> IResult<&str, Expr>
             char(')'),
         )),
     )
-        .map(|(id, params)| Expr::Call(id, params))
-        .parse(input)
+    .map(|(id, params)| Expr::Call(id, params))
+    .parse(input)
 }
 
 fn parse_sub_expr(input: &str) -> IResult<&str, Expr>
@@ -153,10 +152,9 @@ pub fn parse_expr(input: &str) -> IResult<&str, Expr>
             use Operation::*;
 
             match op {
-                Prefix(mode, e) => Ok(Expr::UnaryOp(mode, Box::new(e))),
+                Prefix(mode, e) => Ok::<Expr, &str>(Expr::UnaryOp(mode, Box::new(e))),
                 Postfix(e, mode) => Ok(Expr::UnaryOp(mode, Box::new(e))),
                 Binary(e1, mode, e2) => Ok(Expr::BinaryOp(mode, Box::new(e1), Box::new(e2))),
-                _ => Err("Invalid Combination"),
             }
         },
     )
