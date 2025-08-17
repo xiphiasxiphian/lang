@@ -9,9 +9,9 @@ pub mod types;
 
 mod common;
 
-pub struct Prog<'a>
+pub struct Prog
 {
-    funcs: Vec<Func<'a>>,
+    funcs: Vec<Func>,
 }
 
 pub fn parse_prog(input: &str) -> Result<Prog, Box<dyn std::error::Error + '_>>

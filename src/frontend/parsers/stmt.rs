@@ -6,55 +6,69 @@ use nom::{
     bytes::complete::tag,
     character::complete::char,
     combinator::opt,
-    sequence::{delimited, preceded},
+    sequence::{delimited, preceded, separated_pair},
 };
 
-use crate::frontend::parsers::{
-    common::{Ident, parse_ident, ws},
-    expr::{Expr, parse_block, parse_expr},
-    types::{Type, parse_type},
+use crate::frontend::{
+    Ident,
+    parsers::{
+        common::{parse_ident, ws},
+        expr::{Expr, parse_block, parse_expr},
+        types::{Type, parse_type},
+    },
 };
 
-type _Expr<'a> = Box<Expr<'a>>;
-type _Stmt<'a> = Box<Stmt<'a>>;
+type _Expr = Box<Expr>;
+type _Stmt = Box<Stmt>;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum Stmt<'a>
+pub enum Stmt
 {
+    Declare
+    {
+        id: Ident,
+        ty: Option<Type>,
+        rvalue: _Expr,
+    },
     Assign
     {
-        id: Ident<'a>,
-        ty: Option<Type>,
-        rvalue: _Expr<'a>,
+        id: Ident, rvalue: _Expr
     },
     If
     {
-        cond: _Expr<'a>,
-        tt: _Expr<'a>,
-        ff: Option<_Expr<'a>>,
+        cond: _Expr,
+        tt: _Expr,
+        ff: Option<_Expr>,
     },
     While
     {
-        cond: _Expr<'a>, then: _Expr<'a>
+        cond: _Expr, then: _Expr
     },
+}
+
+fn parse_declare(input: &str) -> IResult<&str, Stmt>
+{
+    (
+        preceded(ws(tag("let")), parse_ident),
+        opt(preceded(ws(char(':')), parse_type)),
+        preceded(ws(char('=')), parse_expr),
+    )
+        .map(|(id, ty, ex)| Stmt::Declare {
+            id: id.into(),
+            ty,
+            rvalue: Box::new(ex),
+        })
+        .parse(input)
 }
 
 fn parse_assign(input: &str) -> IResult<&str, Stmt>
 {
-    alt((
-        (
-            preceded(ws(tag("let")), parse_ident),
-            opt(preceded(ws(char(':')), parse_type)),
-            preceded(ws(char('=')), parse_expr),
-        ),
-        (parse_ident, preceded(ws(char('=')), parse_expr)).map(|(a, b)| (a, None, b)),
-    ))
-    .map(|(id, ty, ex)| Stmt::Assign {
-        id,
-        ty,
-        rvalue: Box::new(ex),
-    })
-    .parse(input)
+    separated_pair(parse_ident, ws(char('=')), parse_expr)
+        .map(|(id, ex)| Stmt::Assign {
+            id: id,
+            rvalue: Box::new(ex),
+        })
+        .parse(input)
 }
 
 fn parse_if(input: &str) -> IResult<&str, Stmt>
@@ -93,7 +107,7 @@ fn parse_while(input: &str) -> IResult<&str, Stmt>
 
 pub fn parse_stmt(input: &str) -> IResult<&str, Stmt>
 {
-    alt((parse_assign, parse_if, parse_while)).parse(input)
+    alt((parse_declare, parse_if, parse_while)).parse(input)
 }
 
 #[cfg(test)]
@@ -106,24 +120,24 @@ mod stmt_tests
     fn basic_assignments()
     {
         assert_eq!(
-            parse_assign("let a: int = 45").unwrap().1,
-            Stmt::Assign {
-                id: "a",
+            parse_declare("let a: int = 45").unwrap().1,
+            Stmt::Declare {
+                id: "a".into(),
                 ty: Some(Type::BasicType(BasicType::Int)),
                 rvalue: Box::new(Expr::Literal(Literal::Int(45)))
             }
         );
 
         assert_eq!(
-            parse_assign("a = 45").unwrap().1,
-            Stmt::Assign {
-                id: "a",
+            parse_declare("a = 45").unwrap().1,
+            Stmt::Declare {
+                id: "a".into(),
                 ty: None,
                 rvalue: Box::new(Expr::Literal(Literal::Int(45)))
             }
         );
 
-        assert!(parse_assign("a: int = 45").is_err())
+        assert!(parse_declare("a: int = 45").is_err())
     }
 
     #[test]

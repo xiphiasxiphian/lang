@@ -63,29 +63,25 @@ pub enum Literal
     String(String),
 }
 
-type _Expr<'a> = Box<Expr<'a>>;
+type _Expr = Box<Expr>;
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Expr<'a>
+pub enum Expr
 {
     Literal(Literal),
-    Ident(&'a str),
-    Call(&'a str, Vec<Expr<'a>>),
-    UnaryOp(UnaryOpMode, _Expr<'a>),
-    BinaryOp(BinOpMode, _Expr<'a>, _Expr<'a>),
-    Stmt(Stmt<'a>),
-    Block(Vec<Expr<'a>>, Option<_Expr<'a>>),
+    Ident(String),
+    Call(String, Vec<Expr>),
+    UnaryOp(UnaryOpMode, _Expr),
+    BinaryOp(BinOpMode, _Expr, _Expr),
+    Stmt(Stmt),
+    Block(Vec<Expr>, Option<_Expr>),
 }
 
 fn parse_literal(input: &str) -> IResult<&str, Expr>
 {
     alt((
         i32.map(|x| Literal::Int(x)),
-        delimited(char('\''), anychar, char('\'')).map(|c| {
-            Literal::Char(c)
-        }),
-        alt((value(true, tag("true")), value(false, tag("false")))).map(
-            |b| Literal::Bool(b),
-        ),
+        delimited(char('\''), anychar, char('\'')).map(|c| Literal::Char(c)),
+        alt((value(true, tag("true")), value(false, tag("false")))).map(|b| Literal::Bool(b)),
         parse_string.map(|s| Literal::String(s)),
     ))
     .map(|l| Expr::Literal(l))
@@ -102,8 +98,8 @@ fn parse_call(input: &str) -> IResult<&str, Expr>
             char(')'),
         )),
     )
-    .map(|(id, params)| Expr::Call(id, params))
-    .parse(input)
+        .map(|(id, params)| Expr::Call(id.into(), params))
+        .parse(input)
 }
 
 fn parse_sub_expr(input: &str) -> IResult<&str, Expr>
@@ -142,7 +138,7 @@ pub fn parse_expr(input: &str) -> IResult<&str, Expr>
             .into_array()),
         ws(alt((
             parse_literal,
-            parse_ident.map(|id| Expr::Ident(id)),
+            parse_ident.map(|x| Expr::Ident(x)),
             parse_call,
             parse_sub_expr,
             parse_block,
@@ -151,7 +147,8 @@ pub fn parse_expr(input: &str) -> IResult<&str, Expr>
         |op: Operation<UnaryOpMode, UnaryOpMode, BinOpMode, Expr>| {
             use Operation::*;
 
-            match op {
+            match op
+            {
                 Prefix(mode, e) => Ok::<Expr, &str>(Expr::UnaryOp(mode, Box::new(e))),
                 Postfix(e, mode) => Ok(Expr::UnaryOp(mode, Box::new(e))),
                 Binary(e1, mode, e2) => Ok(Expr::BinaryOp(mode, Box::new(e1), Box::new(e2))),

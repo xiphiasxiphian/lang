@@ -155,10 +155,12 @@ where
         // Our folding function. For each fragment, append the fragment to the
         // string.
         |mut string, fragment| {
-            match fragment {
+            match fragment
+            {
                 StringFragment::Literal(s) => string.push_str(s),
                 StringFragment::EscapedChar(c) => string.push(c),
-                StringFragment::EscapedWS => {}
+                StringFragment::EscapedWS =>
+                {}
             }
             string
         },

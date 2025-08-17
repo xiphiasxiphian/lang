@@ -2,29 +2,30 @@ use nom::{
     IResult, Parser,
     bytes::complete::tag,
     multi::separated_list0,
-    sequence::{delimited, preceded},
+    sequence::{delimited, preceded, separated_pair},
 };
 
-use crate::frontend::parsers::{
-    common::{parse_ident, ws},
-    expr::{Expr, parse_block},
-    types::{Type, parse_type},
+use crate::frontend::{
+    Ident,
+    parsers::{
+        common::{parse_ident, ws},
+        expr::{Expr, parse_block},
+        types::{Type, parse_type},
+    },
 };
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Func<'a>
+pub struct Func
 {
-    pub name: &'a str,
-    pub parameters: Vec<(&'a str, Type)>,
+    pub name: Ident,
+    pub parameters: Vec<(Ident, Type)>,
     pub return_type: Type,
-    pub block: Expr<'a>,
+    pub block: Expr,
 }
 
-fn parse_parameter(input: &str) -> IResult<&str, (&str, Type)>
+fn parse_parameter(input: &str) -> IResult<&str, (String, Type)>
 {
-    (parse_ident, ws(tag(":")), parse_type)
-        .parse(input)
-        .map(|(rem, (id, _, ty))| (rem, (id, ty)))
+    separated_pair(parse_ident, ws(tag(":")), parse_type).parse(input)
 }
 
 pub fn parse_func(input: &str) -> IResult<&str, Func>
@@ -39,18 +40,13 @@ pub fn parse_func(input: &str) -> IResult<&str, Func>
         preceded(ws(tag("->")), parse_type),
         parse_block,
     )
-        .parse(input)
-        .map(|(rem, (name, params, ty, block))| {
-            (
-                rem,
-                Func {
-                    name,
-                    parameters: params,
-                    return_type: ty,
-                    block,
-                },
-            )
+        .map(|(name, params, ty, block)| Func {
+            name: name.into(),
+            parameters: params,
+            return_type: ty,
+            block,
         })
+        .parse(input)
 }
 
 #[cfg(test)]
@@ -65,10 +61,10 @@ mod tests
         assert_eq!(
             parse_func("fun foo(a: int, b: int) -> int {}").unwrap().1,
             Func {
-                name: "foo",
+                name: "foo".into(),
                 parameters: vec![
-                    ("a", Type::BasicType(BasicType::Int)),
-                    ("b", Type::BasicType(BasicType::Int))
+                    ("a".into(), Type::BasicType(BasicType::Int)),
+                    ("b".into(), Type::BasicType(BasicType::Int))
                 ],
                 return_type: Type::BasicType(BasicType::Int),
                 block: Expr::Block(vec!(), None)

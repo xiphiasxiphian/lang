@@ -51,7 +51,8 @@ where
 {
     fn precedence(&self) -> Q
     {
-        match self {
+        match self
+        {
             Operator::Prefix(_, p) => *p,
             Operator::Postfix(_, p) => *p,
             Operator::Binary(_, p, _) => *p,
@@ -60,7 +61,8 @@ where
 
     fn is_postfix(&self) -> bool
     {
-        match self {
+        match self
+        {
             Operator::Postfix(_, _) => true,
             _ => false,
         }
@@ -81,7 +83,8 @@ where
     P: Parser<I, Output = O, Error = E>,
     Q: Ord + Copy,
 {
-    move |input| match parser.parse(input) {
+    move |input| match parser.parse(input)
+    {
         Ok((i, value)) => Ok((i, Unary { value, precedence })),
         Err(e) => Err(e),
     }
@@ -103,7 +106,8 @@ where
     P: Parser<I, Output = O, Error = E>,
     Q: Ord + Copy,
 {
-    move |input| match parser.parse(input) {
+    move |input| match parser.parse(input)
+    {
         Ok((i, value)) => Ok((
             i,
             Binary {
@@ -224,14 +228,19 @@ where
         let mut operators = Vec::new();
         let mut i1 = i.clone();
 
-        'main: loop {
-            'prefix: loop {
-                match prefix.parse(i1.clone()) {
+        'main: loop
+        {
+            'prefix: loop
+            {
+                match prefix.parse(i1.clone())
+                {
                     Err(Err::Error(_)) => break 'prefix,
                     Err(e) => return Err(e),
-                    Ok((i2, o)) => {
+                    Ok((i2, o)) =>
+                    {
                         // infinite loop check: the parser must always consume
-                        if i2 == i1 {
+                        if i2 == i1
+                        {
                             return Err(Err::Error(E::from_error_kind(i1, ErrorKind::Precedence)));
                         }
                         i1 = i2;
@@ -240,9 +249,11 @@ where
                 }
             }
 
-            let (i2, o) = match operand.parse(i1.clone()) {
+            let (i2, o) = match operand.parse(i1.clone())
+            {
                 Ok((i, o)) => (i, o),
-                Err(Err::Error(e)) => {
+                Err(Err::Error(e)) =>
+                {
                     return Err(Err::Error(E::append(i, ErrorKind::Precedence, e)));
                 }
                 Err(e) => return Err(e),
@@ -250,13 +261,17 @@ where
             i1 = i2;
             operands.push(o);
 
-            'postfix: loop {
-                match postfix.parse(i1.clone()) {
+            'postfix: loop
+            {
+                match postfix.parse(i1.clone())
+                {
                     Err(Err::Error(_)) => break 'postfix,
                     Err(e) => return Err(e),
-                    Ok((i2, o)) => {
+                    Ok((i2, o)) =>
+                    {
                         // infinite loop check: the parser must always consume
-                        if i2 == i1 {
+                        if i2 == i1
+                        {
                             return Err(Err::Error(E::from_error_kind(i1, ErrorKind::Precedence)));
                         }
 
@@ -266,12 +281,15 @@ where
                             .unwrap_or(false)
                         {
                             let value = operands.pop().unwrap();
-                            let operation = match operators.pop().unwrap() {
+                            let operation = match operators.pop().unwrap()
+                            {
                                 Operator::Prefix(op, _) => Operation::Prefix(op, value),
                                 Operator::Postfix(op, _) => Operation::Postfix(value, op),
-                                Operator::Binary(op, _, _) => match operands.pop() {
+                                Operator::Binary(op, _, _) => match operands.pop()
+                                {
                                     Some(lhs) => Operation::Binary(lhs, op, value),
-                                    None => {
+                                    None =>
+                                    {
                                         return Err(Err::Error(E::from_error_kind(
                                             i1,
                                             ErrorKind::Precedence,
@@ -279,8 +297,10 @@ where
                                     }
                                 },
                             };
-                            let result = match fold(operation) {
-                                Err(e) => {
+                            let result = match fold(operation)
+                            {
+                                Err(e) =>
+                                {
                                     return Err(Err::Error(E::from_external_error(
                                         i,
                                         ErrorKind::Precedence,
@@ -297,10 +317,12 @@ where
                 }
             }
 
-            match binary.parse(i1.clone()) {
+            match binary.parse(i1.clone())
+            {
                 Err(Err::Error(_)) => break 'main,
                 Err(e) => return Err(e),
-                Ok((i2, o)) => {
+                Ok((i2, o)) =>
+                {
                     while operators
                         .last()
                         .map(|op| {
@@ -311,12 +333,15 @@ where
                         .unwrap_or(false)
                     {
                         let value = operands.pop().unwrap();
-                        let operation = match operators.pop().unwrap() {
+                        let operation = match operators.pop().unwrap()
+                        {
                             Operator::Prefix(op, _) => Operation::Prefix(op, value),
                             Operator::Postfix(op, _) => Operation::Postfix(value, op),
-                            Operator::Binary(op, _, _) => match operands.pop() {
+                            Operator::Binary(op, _, _) => match operands.pop()
+                            {
                                 Some(lhs) => Operation::Binary(lhs, op, value),
-                                None => {
+                                None =>
+                                {
                                     return Err(Err::Error(E::from_error_kind(
                                         i1,
                                         ErrorKind::Precedence,
@@ -324,8 +349,10 @@ where
                                 }
                             },
                         };
-                        let result = match fold(operation) {
-                            Err(e) => {
+                        let result = match fold(operation)
+                        {
+                            Err(e) =>
+                            {
                                 return Err(Err::Error(E::from_external_error(
                                     i,
                                     ErrorKind::Precedence,
@@ -342,28 +369,35 @@ where
             }
 
             // infinite loop check: either operand or operator must consume input
-            if i == i1 {
+            if i == i1
+            {
                 return Err(Err::Error(E::from_error_kind(i, ErrorKind::Precedence)));
             }
             i = i1.clone();
         }
 
-        while operators.len() > 0 {
-            let value = match operands.pop() {
+        while operators.len() > 0
+        {
+            let value = match operands.pop()
+            {
                 Some(o) => o,
                 None => return Err(Err::Error(E::from_error_kind(i, ErrorKind::Precedence))),
             };
-            let operation = match operators.pop().unwrap() {
+            let operation = match operators.pop().unwrap()
+            {
                 Operator::Prefix(op, _) => Operation::Prefix(op, value),
                 Operator::Postfix(op, _) => Operation::Postfix(value, op),
-                Operator::Binary(op, _, _) => match operands.pop() {
+                Operator::Binary(op, _, _) => match operands.pop()
+                {
                     Some(lhs) => Operation::Binary(lhs, op, value),
                     None => return Err(Err::Error(E::from_error_kind(i, ErrorKind::Precedence))),
                 },
             };
-            let result = match fold(operation) {
+            let result = match fold(operation)
+            {
                 Ok(r) => r,
-                Err(e) => {
+                Err(e) =>
+                {
                     return Err(Err::Error(E::from_external_error(
                         i,
                         ErrorKind::Precedence,
@@ -374,9 +408,12 @@ where
             operands.push(result);
         }
 
-        if operands.len() == 1 {
+        if operands.len() == 1
+        {
             return Ok((i1, operands.pop().unwrap()));
-        } else {
+        }
+        else
+        {
             return Err(Err::Error(E::from_error_kind(i, ErrorKind::Precedence)));
         }
     }
@@ -483,7 +520,8 @@ where
         let (i1, mut res) = self.child.process::<OM>(i)?;
         i = i1;
 
-        loop {
+        loop
+        {
             let len = i.input_len();
             match self
                 .operator
@@ -492,7 +530,8 @@ where
                 Err(Err::Error(_)) => return Ok((i, res)),
                 Err(Err::Failure(e)) => return Err(Err::Failure(e)),
                 Err(Err::Incomplete(e)) => return Err(Err::Incomplete(e)),
-                Ok((i1, op)) => {
+                Ok((i1, op)) =>
+                {
                     match self
                         .child
                         .process::<OutputM<OM::Output, Check, OM::Incomplete>>(i1.clone())
@@ -500,9 +539,11 @@ where
                         Err(Err::Error(_)) => return Ok((i, res)),
                         Err(Err::Failure(e)) => return Err(Err::Failure(e)),
                         Err(Err::Incomplete(e)) => return Err(Err::Incomplete(e)),
-                        Ok((i2, rhs)) => {
+                        Ok((i2, rhs)) =>
+                        {
                             // infinite loop check: the parser must always consume
-                            if i2.input_len() == len {
+                            if i2.input_len() == len
+                            {
                                 return Err(Err::Error(OM::Error::bind(|| {
                                     <F as Parser<I>>::Error::from_error_kind(
                                         i,

@@ -1,6 +1,8 @@
 pub mod precedence;
 pub mod string;
 
+use std::str::FromStr;
+
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
@@ -10,7 +12,7 @@ use nom::multi::many0_count;
 use nom::sequence::{delimited, pair};
 use nom::{IResult, Parser};
 
-pub type Ident<'a> = &'a str;
+use crate::frontend::Ident;
 
 pub fn ws<'a, O, E: ParseError<&'a str>, G>(
     parser: G,
@@ -21,12 +23,13 @@ where
     delimited(multispace0, parser, multispace0)
 }
 
-pub fn parse_ident(input: &str) -> IResult<&str, &str>
+pub fn parse_ident(input: &str) -> IResult<&str, Ident>
 {
     // Currently allows for keywords as identifiers. TODO: Correct this
     recognize(pair(
         alt((alpha1, tag("_"))),
         many0_count(alt((alphanumeric1, tag("_")))),
     ))
+    .map_res(|x| String::from_str(x))
     .parse(input)
 }

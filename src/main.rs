@@ -1,5 +1,6 @@
 use crate::frontend::{frontend, parsers::Prog};
 
+mod common;
 mod frontend;
 
 fn compile(input: &str) -> Result<Prog, Box<dyn std::error::Error + '_>>
