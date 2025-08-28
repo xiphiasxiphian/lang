@@ -9,6 +9,8 @@ use nom::combinator::value;
 use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
+use crate::frontend::parsers::{ParseResult, Span};
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type
 {
@@ -37,21 +39,21 @@ static TYPES: LazyLock<EnumMap<BasicType, &'static str>> = LazyLock::new(|| {
     }
 });
 
-fn parse_basic_type(input: &str) -> IResult<&str, Type>
+fn parse_basic_type(input: Span) -> ParseResult<Type>
 {
     alt(TYPES.map(|ty, label| value(ty, tag(label))).into_array())
         .map(|ty| Type::BasicType(ty))
         .parse(input)
 }
 
-fn parse_array(input: &str) -> IResult<&str, Type>
+fn parse_array(input: Span) -> ParseResult<Type>
 {
     delimited(tag("["), parse_type, tag("]"))
         .map(|ty| Type::Array(Box::new(ty)))
         .parse(input)
 }
 
-pub fn parse_type(input: &str) -> IResult<&str, Type>
+pub fn parse_type(input: Span) -> ParseResult<Type>
 {
     alt((
         value(Type::Void, tag("void")),

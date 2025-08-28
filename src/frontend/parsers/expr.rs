@@ -2,20 +2,20 @@ use std::sync::LazyLock;
 
 use enum_map::{Enum, EnumMap, enum_map};
 use nom::branch::alt;
-use nom::bytes::complete::tag;
 use nom::character::char;
 use nom::character::complete::{anychar, i32, multispace0};
 use nom::combinator::{cut, fail, map, opt, value};
 use nom::multi::{many0, separated_list0};
 use nom::sequence::{delimited, preceded, terminated};
 use nom::{IResult, Parser};
+use nom_supreme::parser_ext::ParserExt;
+use nom_supreme::tag::complete::tag;
 
-use crate::frontend::parsers::common::precedence::{
-    Assoc, Operation, binary_op, precedence, unary_op,
-};
-use crate::frontend::parsers::common::string::parse_string;
+use crate::frontend::parsers::common::string::{parse_string, span_parse_string};
 use crate::frontend::parsers::common::{parse_ident, ws};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
+use crate::frontend::parsers::{ParseResult, Span};
+use nom_language::precedence::{Assoc, Operation, binary_op, precedence, unary_op};
 
 #[derive(Clone, Debug, PartialEq, Eq, Enum)]
 pub enum UnaryOpMode
@@ -76,19 +76,19 @@ pub enum Expr
     Block(Vec<Expr>, Option<_Expr>),
 }
 
-fn parse_literal(input: &str) -> IResult<&str, Expr>
+fn parse_literal(input: Span) -> ParseResult<Expr>
 {
     alt((
         i32.map(|x| Literal::Int(x)),
+        alt((tag("true").value(true), tag("false").value(false))).map(|b| Literal::Bool(b)),
         delimited(char('\''), anychar, char('\'')).map(|c| Literal::Char(c)),
-        alt((value(true, tag("true")), value(false, tag("false")))).map(|b| Literal::Bool(b)),
         parse_string.map(|s| Literal::String(s)),
     ))
     .map(|l| Expr::Literal(l))
     .parse(input)
 }
 
-fn parse_call(input: &str) -> IResult<&str, Expr>
+fn parse_call(input: Span) -> ParseResult<Expr>
 {
     (
         parse_ident,
@@ -102,7 +102,7 @@ fn parse_call(input: &str) -> IResult<&str, Expr>
         .parse(input)
 }
 
-fn parse_sub_expr(input: &str) -> IResult<&str, Expr>
+fn parse_sub_expr(input: Span) -> ParseResult<Expr>
 {
     ws(delimited(
         char('('),
@@ -112,7 +112,7 @@ fn parse_sub_expr(input: &str) -> IResult<&str, Expr>
     .parse(input)
 }
 
-pub fn parse_block(input: &str) -> IResult<&str, Expr>
+pub fn parse_block(input: Span) -> ParseResult<Expr>
 {
     ws(delimited(
         char('{'),
@@ -126,7 +126,7 @@ pub fn parse_block(input: &str) -> IResult<&str, Expr>
     .parse(input)
 }
 
-pub fn parse_expr(input: &str) -> IResult<&str, Expr>
+pub fn parse_expr(input: Span) -> ParseResult<Expr>
 {
     precedence(
         alt(UNARY_OP_SYMS
@@ -167,7 +167,7 @@ mod expr_test
     fn parse_empty_block()
     {
         assert_eq!(
-            parse_block("{  \n   }").unwrap().1,
+            parse_block("{  \n   }".into()).unwrap().1,
             Expr::Block(vec!(), None)
         )
     }
@@ -177,18 +177,18 @@ mod expr_test
     {
         // Integers
         assert_eq!(
-            parse_literal("32").unwrap().1,
+            parse_literal("32".into()).unwrap().1,
             Expr::Literal(Literal::Int(32))
         );
 
         assert_eq!(
-            parse_literal("-32").unwrap().1,
+            parse_literal("-32".into()).unwrap().1,
             Expr::Literal(Literal::Int(-32))
         );
 
         // Strings
         assert_eq!(
-            parse_literal("\"This is some really interesting text\"")
+            parse_literal(Span::new("\"This is some really interesting text\""))
                 .unwrap()
                 .1,
             Expr::Literal(Literal::String(String::from(
@@ -196,14 +196,14 @@ mod expr_test
             )))
         );
 
-        assert!(parse_literal("This is some text").is_err())
+        assert!(parse_literal(Span::new("This is some text")).is_err())
     }
 
     #[test]
     fn complex_expr_test()
     {
         assert_eq!(
-            parse_expr("-(5 + 4)").unwrap().1,
+            parse_expr(Span::new("-(5 + 4)")).unwrap().1,
             Expr::UnaryOp(
                 UnaryOpMode::Neg,
                 Box::new(Expr::BinaryOp(

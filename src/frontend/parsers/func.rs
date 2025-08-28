@@ -1,13 +1,15 @@
 use nom::{
-    IResult, Parser,
-    bytes::complete::tag,
+    Parser,
     multi::separated_list0,
     sequence::{delimited, preceded, separated_pair},
 };
 
+use nom_supreme::tag::complete::tag;
+
 use crate::frontend::{
     Ident,
     parsers::{
+        ParseResult, Span,
         common::{parse_ident, ws},
         expr::{Expr, parse_block},
         types::{Type, parse_type},
@@ -23,12 +25,12 @@ pub struct Func
     pub block: Expr,
 }
 
-fn parse_parameter(input: &str) -> IResult<&str, (String, Type)>
+fn parse_parameter(input: Span) -> ParseResult<(String, Type)>
 {
     separated_pair(parse_ident, ws(tag(":")), parse_type).parse(input)
 }
 
-pub fn parse_func(input: &str) -> IResult<&str, Func>
+pub fn parse_func(input: Span) -> ParseResult<Func>
 {
     (
         preceded(ws(tag("fun")), parse_ident),
@@ -59,7 +61,9 @@ mod tests
     fn basic_fun_header_test()
     {
         assert_eq!(
-            parse_func("fun foo(a: int, b: int) -> int {}").unwrap().1,
+            parse_func(Span::new("fun foo(a: int, b: int) -> int {}"))
+                .unwrap()
+                .1,
             Func {
                 name: "foo".into(),
                 parameters: vec![

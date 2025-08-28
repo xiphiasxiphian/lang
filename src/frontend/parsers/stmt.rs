@@ -12,6 +12,7 @@ use nom::{
 use crate::frontend::{
     Ident,
     parsers::{
+        ParseResult, Span,
         common::{parse_ident, ws},
         expr::{Expr, parse_block, parse_expr},
         types::{Type, parse_type},
@@ -46,7 +47,7 @@ pub enum Stmt
     },
 }
 
-fn parse_declare(input: &str) -> IResult<&str, Stmt>
+fn parse_declare(input: Span) -> ParseResult<Stmt>
 {
     (
         preceded(ws(tag("let")), parse_ident),
@@ -61,7 +62,7 @@ fn parse_declare(input: &str) -> IResult<&str, Stmt>
         .parse(input)
 }
 
-fn parse_assign(input: &str) -> IResult<&str, Stmt>
+fn parse_assign(input: Span) -> ParseResult<Stmt>
 {
     separated_pair(parse_ident, ws(char('=')), parse_expr)
         .map(|(id, ex)| Stmt::Assign {
@@ -71,7 +72,7 @@ fn parse_assign(input: &str) -> IResult<&str, Stmt>
         .parse(input)
 }
 
-fn parse_if(input: &str) -> IResult<&str, Stmt>
+fn parse_if(input: Span) -> ParseResult<Stmt>
 {
     (
         preceded(
@@ -89,7 +90,7 @@ fn parse_if(input: &str) -> IResult<&str, Stmt>
         .parse(input)
 }
 
-fn parse_while(input: &str) -> IResult<&str, Stmt>
+fn parse_while(input: Span) -> ParseResult<Stmt>
 {
     (
         preceded(
@@ -105,7 +106,7 @@ fn parse_while(input: &str) -> IResult<&str, Stmt>
         .parse(input)
 }
 
-pub fn parse_stmt(input: &str) -> IResult<&str, Stmt>
+pub fn parse_stmt(input: Span) -> ParseResult<Stmt>
 {
     alt((parse_declare, parse_if, parse_while)).parse(input)
 }
@@ -120,7 +121,7 @@ mod stmt_tests
     fn basic_assignments()
     {
         assert_eq!(
-            parse_declare("let a: int = 45").unwrap().1,
+            parse_declare(Span::new("let a: int = 45")).unwrap().1,
             Stmt::Declare {
                 id: "a".into(),
                 ty: Some(Type::BasicType(BasicType::Int)),
@@ -129,7 +130,7 @@ mod stmt_tests
         );
 
         assert_eq!(
-            parse_declare("a = 45").unwrap().1,
+            parse_declare(Span::new("a = 45")).unwrap().1,
             Stmt::Declare {
                 id: "a".into(),
                 ty: None,
@@ -137,14 +138,16 @@ mod stmt_tests
             }
         );
 
-        assert!(parse_declare("a: int = 45").is_err())
+        assert!(parse_declare(Span::new("a: int = 45")).is_err())
     }
 
     #[test]
     fn basic_if()
     {
         assert_eq!(
-            parse_if("if (true) { 32 } else { 42 }").unwrap().1,
+            parse_if(Span::new("if (true) { 32 } else { 42 }"))
+                .unwrap()
+                .1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(true))),
                 tt: Box::new(Expr::Block(
@@ -159,7 +162,7 @@ mod stmt_tests
         );
 
         assert_eq!(
-            parse_if("if (false) { 50 }").unwrap().1,
+            parse_if(Span::new("if (false) { 50 }")).unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(false))),
                 tt: Box::new(Expr::Block(
@@ -171,7 +174,7 @@ mod stmt_tests
         );
 
         assert_eq!(
-            parse_if("if (false) {  }").unwrap().1,
+            parse_if(Span::new("if (false) {  }")).unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(false))),
                 tt: Box::new(Expr::Block(vec!(), None)),

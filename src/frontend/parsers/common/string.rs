@@ -18,10 +18,13 @@ use nom::branch::alt;
 use nom::bytes::streaming::{is_not, take_while_m_n};
 use nom::character::streaming::{char, multispace1};
 use nom::combinator::{map, map_opt, map_res, value, verify};
-use nom::error::{FromExternalError, ParseError};
+use nom::error::{Error, ErrorKind, FromExternalError, ParseError};
 use nom::multi::fold;
 use nom::sequence::{delimited, preceded};
-use nom::{IResult, Parser};
+use nom::{IResult, Input, Offset, Parser};
+use nom_supreme::error::BaseErrorKind;
+
+use crate::frontend::parsers::{ParseResult, Span};
 
 // parser combinators are constructed from the bottom up:
 // first we write parsers for the smallest elements (escaped characters),
@@ -171,4 +174,27 @@ where
     // `delimited` with a looping parser (like fold), be sure that the
     // loop won't accidentally match your closing delimiter!
     delimited(char('"'), build_string, char('"')).parse(input)
+}
+
+pub fn span_parse_string(input: Span) -> ParseResult<String>
+{
+    let original = input.fragment();
+    match parse_string::<Error<&str>>(original)
+    {
+        Ok((rem, out)) =>
+        {
+            let offset = original.offset(&rem);
+            Ok((input.take_from(offset), out))
+        }
+        Err(_) =>
+        {
+            // TODO: Figure out something here
+            Err(nom::Err::Error(
+                nom_supreme::error::GenericErrorTree::Base {
+                    location: input,
+                    kind: BaseErrorKind::Kind(ErrorKind::Escaped),
+                },
+            ))
+        }
+    }
 }

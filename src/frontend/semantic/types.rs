@@ -8,13 +8,15 @@ use std::{
 use enum_map::{EnumMap, enum_map};
 
 use crate::frontend::{
+    errors::CompileError,
     parsers::{
+        Prog,
         expr::{BinOpMode, Expr, Literal, UnaryOpMode},
         func::Func,
         stmt::Stmt,
         types::{BasicType, Type},
     },
-    semantic::symbol::SymbolTable,
+    semantic::GlobalTable,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -96,19 +98,22 @@ impl Type
     }
 }
 
-struct TypeChecker<'a>
+pub struct TypeChecker<'a>
 {
-    symbols: &'a SymbolTable,
+    errors: &'a mut Vec<CompileError>,
+    symbols: &'a GlobalTable,
 }
 
 impl<'a> TypeChecker<'a>
 {
-    pub fn new(symbols: &'a SymbolTable) -> Self
+    pub fn new(errors: &'a mut Vec<CompileError>, symbols: &'a GlobalTable) -> Self
     {
-        TypeChecker { symbols }
+        TypeChecker { errors, symbols }
     }
 
-    pub fn check_expr(&self, expr: &Expr, c: TypeContraint) -> Option<Type>
+    pub fn check_prog(&self, prog: &Prog) {}
+
+    fn check_expr(&self, expr: &Expr, c: TypeContraint) -> Option<Type>
     {
         match expr
         {
@@ -118,7 +123,7 @@ impl<'a> TypeChecker<'a>
                 // Need to figure out unique id stuff for this to actually work ...
                 let entry = &String::from_str(id).expect("Failed to parse id string");
 
-                self.symbols.get(id).satisfies_then(c)
+                self.get_symbol(id).satisfies_then(c)
             }
             Expr::Call(id, ps) => todo!(),
             Expr::UnaryOp(mode, p) => self.check_unary_op(mode, p, c),
@@ -138,7 +143,7 @@ impl<'a> TypeChecker<'a>
         }
     }
 
-    pub fn check_func(&self, func: &Func, c: TypeContraint) -> Option<Type>
+    fn check_func(&self, func: &Func, c: TypeContraint) -> Option<Type>
     {
         let ret_expr_typed =
             self.check_expr(&func.block, c & TypeContraint::Is(func.return_type.clone()));
@@ -176,7 +181,7 @@ impl<'a> TypeChecker<'a>
             }
             Stmt::Assign { id, rvalue } =>
             {
-                self.check_expr(rvalue.as_ref(), TypeContraint::Is(self.symbols.get(id)) & c)
+                self.check_expr(rvalue.as_ref(), TypeContraint::Is(self.get_symbol(id)) & c)
             }
             Stmt::While { cond, then } =>
             {
@@ -232,18 +237,30 @@ impl<'a> TypeChecker<'a>
             .and(self.check_expr(p2, mode_info.1))
             .and_then(|_| mode_info.2.satisfies_then(c))
     }
+
+    fn get_symbol(&self, id: &String) -> Type
+    {
+        self.symbols
+            .get(id)
+            .cloned()
+            .expect(format!("Id {id} not found. Did Scope Checking Succeed properly?").as_str())
+    }
 }
 
 #[cfg(test)]
 mod type_check_tests
 {
+    use std::collections::HashMap;
+
     use super::*;
 
     #[test]
     fn if_stmt_check()
     {
-        let table = SymbolTable::new();
-        let checker = TypeChecker::new(&table);
+        let table = HashMap::new();
+        let mut errors = Vec::new();
+
+        let checker = TypeChecker::new(&mut errors, &table);
 
         let good_if_stmt = Stmt::If {
             cond: Box::new(Expr::Literal(Literal::Bool(true))),
@@ -311,8 +328,10 @@ mod type_check_tests
     #[test]
     fn assign_check()
     {
-        let table = SymbolTable::new();
-        let checker = TypeChecker::new(&table);
+        let table = HashMap::new();
+        let mut errors = Vec::new();
+
+        let checker = TypeChecker::new(&mut errors, &table);
 
         let good_assign = Expr::Stmt(Stmt::Declare {
             id: "a".into(),

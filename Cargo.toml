@@ -7,3 +7,6 @@ edition = "2024"
 enum-map = "2.7.3"
 itertools = "0.14.0"
 nom = "8.0.0"
+nom_locate = "5.0.0"
+nom-supreme = { path = "./lib/nom-supreme", version="0.8.0" }
+nom-language = "0.1.0"
