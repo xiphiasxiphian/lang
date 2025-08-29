@@ -1,17 +1,17 @@
 use std::sync::LazyLock;
 
 use enum_map::{Enum, EnumMap, enum_map};
+use nom::Parser;
 use nom::branch::alt;
 use nom::character::char;
 use nom::character::complete::{anychar, i32, multispace0};
-use nom::combinator::{cut, fail, map, opt, value};
+use nom::combinator::{cut, fail, opt, value};
 use nom::multi::{many0, separated_list0};
 use nom::sequence::{delimited, preceded, terminated};
-use nom::{IResult, Parser};
 use nom_supreme::parser_ext::ParserExt;
 use nom_supreme::tag::complete::tag;
 
-use crate::frontend::parsers::common::string::{parse_string, span_parse_string};
+use crate::frontend::parsers::common::string::span_parse_string;
 use crate::frontend::parsers::common::{parse_ident, ws};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
 use crate::frontend::parsers::{ParseResult, Span};
@@ -82,7 +82,7 @@ fn parse_literal(input: Span) -> ParseResult<Expr>
         i32.map(|x| Literal::Int(x)),
         alt((tag("true").value(true), tag("false").value(false))).map(|b| Literal::Bool(b)),
         delimited(char('\''), anychar, char('\'')).map(|c| Literal::Char(c)),
-        parse_string.map(|s| Literal::String(s)),
+        span_parse_string.map(|s| Literal::String(s)),
     ))
     .map(|l| Expr::Literal(l))
     .parse(input)

@@ -6,13 +6,13 @@ use itertools::Itertools;
 
 use crate::common::ScopeMethods;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LineAttachment
 {
     Highlight(char, Range<usize>, Option<String>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SourceLine(String, usize, Vec<Vec<LineAttachment>>);
 impl SourceLine
 {
@@ -41,7 +41,7 @@ impl SourceLine
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ErrorBuilder
 {
     error_type: Option<String>,

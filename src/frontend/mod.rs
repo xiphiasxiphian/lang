@@ -13,7 +13,7 @@ pub type Ident = String;
 pub type Errors = Vec<CompileError>;
 pub type ErrorBuffer = Rc<RefCell<Errors>>;
 
-pub fn frontend(input: &str) -> Result<Prog, Box<dyn std::error::Error + '_>>
+pub fn frontend(input: &str) -> Result<Prog, Vec<CompileError>>
 {
     let prog = parse_prog(input)?;
 

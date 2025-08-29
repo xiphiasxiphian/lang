@@ -1,17 +1,14 @@
-use crate::frontend::{frontend, parsers::Prog};
+use crate::frontend::frontend;
 
 mod common;
 mod frontend;
 
-fn compile(input: &str) -> Result<Prog, Box<dyn std::error::Error + '_>>
+fn compile(input: &str)
 {
-    let syn_prog = frontend(input)?;
-
-    Ok(syn_prog)
+    let syn_prog = frontend(input).expect("TODO: Havent fix compile function get");
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>>
+fn main()
 {
     let prog = compile("test");
-    Ok(())
 }

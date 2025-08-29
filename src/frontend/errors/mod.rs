@@ -11,7 +11,7 @@ use crate::{
 
 pub mod builder;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CompileError
 {
     builder: ErrorBuilder,
