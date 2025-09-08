@@ -10,3 +10,9 @@ nom = "8.0.0"
 nom_locate = "5.0.0"
 nom-supreme = { path = "./lib/nom-supreme", version="0.8.0" }
 nom-language = "0.1.0"
+datatest-stable = "0.3.2"
+assert_cmd = "2.0.17"
+
+[[test]]
+name = "runner"
+harness = false

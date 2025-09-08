@@ -1,13 +1,12 @@
-use std::ops::Add;
-
 use nom::{
-    IResult, Parser,
+    Parser,
     branch::alt,
-    bytes::complete::tag,
     character::complete::char,
     combinator::opt,
     sequence::{delimited, preceded, separated_pair},
 };
+
+use nom_supreme::tag::complete::tag;
 
 use crate::frontend::{
     Ident,
@@ -108,7 +107,7 @@ fn parse_while(input: Span) -> ParseResult<Stmt>
 
 pub fn parse_stmt(input: Span) -> ParseResult<Stmt>
 {
-    alt((parse_declare, parse_if, parse_while)).parse(input)
+    alt((parse_declare, parse_assign, parse_if, parse_while)).parse(input)
 }
 
 #[cfg(test)]
@@ -121,7 +120,7 @@ mod stmt_tests
     fn basic_assignments()
     {
         assert_eq!(
-            parse_declare(Span::new("let a: int = 45")).unwrap().1,
+            parse_stmt(Span::new("let a: int = 45")).unwrap().1,
             Stmt::Declare {
                 id: "a".into(),
                 ty: Some(Type::BasicType(BasicType::Int)),
@@ -130,15 +129,14 @@ mod stmt_tests
         );
 
         assert_eq!(
-            parse_declare(Span::new("a = 45")).unwrap().1,
-            Stmt::Declare {
+            parse_stmt(Span::new("a = 45")).unwrap().1,
+            Stmt::Assign {
                 id: "a".into(),
-                ty: None,
                 rvalue: Box::new(Expr::Literal(Literal::Int(45)))
             }
         );
 
-        assert!(parse_declare(Span::new("a: int = 45")).is_err())
+        assert!(parse_stmt(Span::new("a: int = 45")).is_err())
     }
 
     #[test]

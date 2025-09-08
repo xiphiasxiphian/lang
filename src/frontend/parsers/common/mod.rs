@@ -8,8 +8,7 @@ use nom::combinator::recognize;
 use nom::error::ParseError;
 use nom::multi::many0_count;
 use nom::sequence::{delimited, pair};
-use nom::{AsBytes, AsChar, IResult, Input, Offset, Parser};
-use nom_locate::LocatedSpan;
+use nom::{AsChar, Input, Parser};
 use nom_supreme::tag::complete::tag;
 
 use crate::frontend::Ident;

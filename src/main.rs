@@ -1,14 +1,15 @@
-use crate::frontend::frontend;
+use std::fmt::Debug;
+
+use crate::config::{Config, Status};
 
 mod common;
+mod config;
 mod frontend;
 
-fn compile(input: &str)
+fn main() -> Status
 {
-    let syn_prog = frontend(input).expect("TODO: Havent fix compile function get");
-}
-
-fn main()
-{
-    let prog = compile("test");
+    Config::from_args()
+        .map(|x| x.compile())
+        .map_err(|x| Status::Config(x))
+        .unwrap_or_else(|x| x)
 }

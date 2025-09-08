@@ -45,6 +45,7 @@ impl SourceLine
 pub struct ErrorBuilder
 {
     error_type: Option<String>,
+    location: Option<(String, usize, usize)>,
     summary: Option<String>,
     lines: Vec<SourceLine>,
 }
@@ -55,6 +56,7 @@ impl ErrorBuilder
     {
         ErrorBuilder {
             error_type: None,
+            location: None,
             summary: None,
             lines: vec![],
         }
@@ -69,6 +71,12 @@ impl ErrorBuilder
     pub fn with_type(&mut self, s: String) -> &mut Self
     {
         self.error_type = Some(s);
+        self
+    }
+
+    pub fn with_location(&mut self, filename: String, line: usize, col: usize) -> &mut Self
+    {
+        self.location = Some((filename, line, col));
         self
     }
 
@@ -96,10 +104,13 @@ impl ErrorBuilder
         let mut result = String::new();
 
         let header = format!(
-            "[{}] {}\n",
+            "[{}] {}\n{}",
             self.error_type.unwrap_or_else(|| "Compile Error".into()),
             self.summary
-                .unwrap_or_else(|| "Error in compilation".into())
+                .unwrap_or_else(|| "Error in compilation".into()),
+            self.location
+                .map(|x| format!("   at {}:{}:{}\n", x.0, x.1, x.2))
+                .unwrap_or_else(|| "".into())
         );
 
         result += header.as_str();

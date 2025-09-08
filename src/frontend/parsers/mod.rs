@@ -25,9 +25,9 @@ pub struct Prog
 pub fn parse_prog(input: &str) -> Result<Prog, Vec<CompileError>>
 {
     let span = Span::new(input);
-    match many1(parse_func).parse_complete(span).finish()
-    {
-        Ok((_, funcs)) => Ok(Prog { funcs }),
-        Err(_) => todo!(),
-    }
+    many1(parse_func)
+        .parse_complete(span)
+        .finish()
+        .map(|(_, x)| Prog { funcs: x })
+        .map_err(|e| vec![e.into()])
 }

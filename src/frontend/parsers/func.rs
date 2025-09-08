@@ -1,10 +1,11 @@
 use nom::{
     Parser,
+    combinator::{cut, opt},
     multi::separated_list0,
     sequence::{delimited, preceded, separated_pair},
 };
 
-use nom_supreme::tag::complete::tag;
+use nom_supreme::{ParserExt, tag::complete::tag};
 
 use crate::frontend::{
     Ident,
@@ -27,7 +28,12 @@ pub struct Func
 
 fn parse_parameter(input: Span) -> ParseResult<(String, Type)>
 {
-    separated_pair(parse_ident, ws(tag(":")), parse_type).parse(input)
+    separated_pair(
+        parse_ident,
+        ws(tag(":")).context("Expected function parameter to be given a type"),
+        parse_type,
+    )
+    .parse(input)
 }
 
 pub fn parse_func(input: Span) -> ParseResult<Func>
@@ -39,13 +45,13 @@ pub fn parse_func(input: Span) -> ParseResult<Func>
             separated_list0(ws(tag(",")), parse_parameter),
             tag(")"),
         ),
-        preceded(ws(tag("->")), parse_type),
+        opt(preceded(ws(tag("->")), parse_type)),
         parse_block,
     )
         .map(|(name, params, ty, block)| Func {
             name: name.into(),
             parameters: params,
-            return_type: ty,
+            return_type: ty.unwrap_or(Type::Void),
             block,
         })
         .parse(input)

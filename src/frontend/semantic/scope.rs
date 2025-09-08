@@ -3,49 +3,35 @@ use std::collections::HashMap;
 use crate::{
     common::ScopeMethods,
     frontend::{
-        ErrorBuffer, Ident,
-        errors::CompileError,
-        parsers::{Prog, expr::Expr, func::Func, stmt::Stmt, types::Type},
-        semantic::{
-            GlobalTableBuffer,
-            symbol::{UniqueId, gen_id},
-        },
+        errors::CompileError, parsers::{expr::Expr, func::Func, stmt::Stmt, types::Type, Prog}, semantic::{
+            symbol::{gen_id, SymbolTableBuffer, UniqueId}
+        }, ErrorBuffer, Ident
     },
 };
 
-#[derive(Clone)]
-struct FunctionTypeInfo
-{
-    params: Vec<Type>,
-    return_type: Type,
-}
-
-type FunctionTable = HashMap<UniqueId, FunctionTypeInfo>;
 type Table = HashMap<Ident, UniqueId>;
 
 pub struct Scopes
 {
     errors: ErrorBuffer,
-    functions: FunctionTable,
-    global: GlobalTableBuffer,
+    symbols: SymbolTableBuffer,
     parent: Table,
     local: Table,
 }
 
 impl Scopes
 {
-    pub fn new(errors: ErrorBuffer, globals: GlobalTableBuffer) -> Self
+    pub fn new(errors: ErrorBuffer, symbols: SymbolTableBuffer) -> Self
     {
         Scopes {
             errors,
-            functions: FunctionTable::new(),
-            global: globals,
+            symbols: symbols,
             parent: Table::new(),
             local: Table::new(),
         }
     }
 
-    pub fn eval_prog(prog: &Prog, errors: ErrorBuffer, globals: GlobalTableBuffer) -> Prog
+    pub fn eval_prog(prog: &Prog, errors: ErrorBuffer, globals: SymbolTableBuffer) -> Prog
     {
         let mut scopes = Self::new(errors, globals);
         let new_prog = scopes.check_prog(prog);
@@ -69,8 +55,7 @@ impl Scopes
 
         Scopes {
             errors: parent.errors.clone(),
-            functions: parent.functions.clone(),
-            global: parent.global.clone(),
+            symbols: parent.symbols.clone(),
             parent: new_parent,
             local: HashMap::new(),
         }
@@ -86,8 +71,8 @@ impl Scopes
 
     fn new_global_symbol(&mut self, ty: Type, name: Ident) -> UniqueId
     {
-        let uid = gen_id(name, self.global.borrow().len());
-        self.global.borrow_mut().insert(uid.clone(), ty);
+        let uid = gen_id(name, self.symbols.borrow().globals.len());
+        self.symbols.borrow_mut().globals.insert(uid.clone(), ty);
 
         uid
     }
@@ -133,6 +118,8 @@ impl Scopes
 
     fn check_func(&mut self, func: &Func) -> Func
     {
+
+
         Func {
             name: func.name.clone(),
             parameters: func.parameters.clone(),
