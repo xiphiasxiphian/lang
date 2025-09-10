@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::{HashMap, HashSet}, rc::Rc};
 
 use crate::frontend::parsers::types::Type;
 
@@ -28,6 +28,7 @@ pub struct SymbolTable
 {
     pub funcs: FunctionTable,
     pub globals: GlobalTable,
+    pub undefined: HashSet<UniqueId>,
 }
 
 impl SymbolTable
