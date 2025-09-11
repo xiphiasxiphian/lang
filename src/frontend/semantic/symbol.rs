@@ -1,15 +1,11 @@
 use std::{cell::RefCell, collections::{HashMap, HashSet}, rc::Rc};
 
-use crate::frontend::parsers::types::Type;
+use nom::Err;
+
+use crate::{common::ScopeMethods, frontend::{errors::CompileError, parsers::types::Type, Ident}};
 
 const SPECIAL_CHAR: char = '$';
 pub type UniqueId = String;
-
-pub fn gen_id(id: String, num: usize) -> UniqueId
-{
-    format!("{id}{SPECIAL_CHAR}{num}")
-}
-
 
 #[derive(Clone)]
 pub struct FunctionTypeInfo
@@ -26,9 +22,10 @@ pub type SymbolTableBuffer = Rc<RefCell<SymbolTable>>;
 #[derive(Default)]
 pub struct SymbolTable
 {
-    pub funcs: FunctionTable,
-    pub globals: GlobalTable,
-    pub undefined: HashSet<UniqueId>,
+    funcs: FunctionTable,
+    globals: GlobalTable,
+    undefined: HashSet<UniqueId>,
+    untyped: HashSet<UniqueId>,
 }
 
 impl SymbolTable
@@ -44,13 +41,67 @@ impl SymbolTable
         Rc::new(RefCell::new(Self::new()))
     }
 
-    pub fn from_buffer(buffer: SymbolTableBuffer) -> Self
+    pub fn from_buffer(buffer: SymbolTableBuffer) -> Result<Self, Vec<CompileError>>
     {
-        buffer.take()
+        let result = buffer.take();
+        if result.undefined.is_empty()
+        {
+            Ok(result)
+        }
+        else
+        {
+            Err
+            (
+                result.undefined
+                    .iter()
+                    .map(|x| todo!())
+                    .collect()
+            )
+        }
     }
 
-    pub fn get_global(&self, id: &UniqueId) -> Option<&Type>
+    pub fn insert_func(&mut self, id: UniqueId, info: Option<FunctionTypeInfo>) -> Option<UniqueId>
+    {
+        match info
+        {
+            Some(t) => {
+                self.undefined.remove(&id);
+                self.funcs.insert(id.clone(), t).map(|_| id)
+            }
+            None => {
+                if !self.funcs.contains_key(&id) { self.undefined.insert(id); }
+                None
+            }
+        }
+    }
+
+    pub fn new_global_id(&self, id: Ident) -> UniqueId
+    {
+        format!("{id}{SPECIAL_CHAR}{}", self.globals.len())
+    }
+
+    pub fn insert_global(&mut self, id: UniqueId, ty: Type) -> Option<UniqueId>
+    {
+        self.globals.insert(id.clone(), ty).map(|_| id)
+    }
+
+    pub fn insert_untyped(&mut self, id: UniqueId) -> Option<UniqueId>
+    {
+        Some(id.clone()).filter(|_| self.untyped.insert(id.clone()))
+    }
+
+    pub fn get_global(&mut self, id: &UniqueId) -> Option<&Type>
     {
         self.globals.get(id)
+    }
+
+    pub fn set_untyped(&mut self, id: UniqueId, ty: Type)
+    {
+        if self.untyped.remove(&id) { self.globals.insert(id, ty); }
+    }
+
+    pub fn get_func_info(&self, id: &UniqueId) -> Option<&FunctionTypeInfo>
+    {
+        self.funcs.get(id)
     }
 }

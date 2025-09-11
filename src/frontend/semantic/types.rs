@@ -97,27 +97,30 @@ impl Type
 pub struct TypeChecker<'a>
 {
     errors: &'a mut Vec<CompileError>,
-    symbols: &'a SymbolTable,
+    symbols: &'a mut SymbolTable,
 }
 
 impl<'a> TypeChecker<'a>
 {
-    pub fn new(errors: &'a mut Vec<CompileError>, symbols: &'a SymbolTable) -> Self
+    pub fn new(errors: &'a mut Vec<CompileError>, symbols: &'a mut SymbolTable) -> Self
     {
         TypeChecker { errors, symbols }
     }
 
-    pub fn check_prog(&self, prog: &Prog)
+    pub fn check_prog(&mut self, prog: &Prog)
     {
         prog.funcs.iter().for_each(|x| {self.check_func(x);});
     }
 
-    fn check_expr(&self, expr: &Expr, c: TypeContraint) -> Option<Type>
+    fn check_expr(&mut self, expr: &Expr, c: TypeContraint) -> Option<Type>
     {
         match expr
         {
             Expr::Literal(lit) => self.check_literal(lit, c),
-            Expr::Ident(id) => self.get_symbol(id).satisfies_then(c),
+            Expr::Ident(id) => self.symbols.get_global(id)
+                .cloned()
+                .expect("Failed to get expected global while type checking")
+                .satisfies_then(c),
             Expr::Call(id, ps) => {
                 let info = self.get_func_info(id);
 
@@ -149,7 +152,7 @@ impl<'a> TypeChecker<'a>
         }
     }
 
-    fn check_func(&self, func: &Func) -> Option<Type>
+    fn check_func(&mut self, func: &Func) -> Option<Type>
     {
         let ret_expr_typed =
             self.check_expr(&func.block, TypeContraint::Is(func.return_type.clone()));
@@ -168,7 +171,7 @@ impl<'a> TypeChecker<'a>
         .satisfies_then(c)
     }
 
-    fn check_stmt(&self, stmt: &Stmt, c: TypeContraint) -> Option<Type>
+    fn check_stmt(&mut self, stmt: &Stmt, c: TypeContraint) -> Option<Type>
     {
         match stmt
         {
@@ -187,7 +190,15 @@ impl<'a> TypeChecker<'a>
             }
             Stmt::Assign { id, rvalue } =>
             {
-                self.check_expr(rvalue.as_ref(), TypeContraint::Is(self.get_symbol(id)) & c)
+                self.with_symbol(
+                    id,
+                    |checker, x| checker.check_expr(
+                        rvalue.as_ref(),
+                        x
+                            .map(|t| TypeContraint::Is(t))
+                            .unwrap_or(TypeContraint::Any) & c
+                    )
+                )
             }
             Stmt::While { cond, then } =>
             {
@@ -201,7 +212,7 @@ impl<'a> TypeChecker<'a>
         }
     }
 
-    fn check_unary_op(&self, mode: &UnaryOpMode, p: &Expr, c: TypeContraint) -> Option<Type>
+    fn check_unary_op(&mut self, mode: &UnaryOpMode, p: &Expr, c: TypeContraint) -> Option<Type>
     {
         let mode_info = match mode
         {
@@ -220,7 +231,7 @@ impl<'a> TypeChecker<'a>
     }
 
     fn check_binary_op(
-        &self,
+        &mut self,
         mode: &BinOpMode,
         p1: &Expr,
         p2: &Expr,
@@ -244,18 +255,23 @@ impl<'a> TypeChecker<'a>
             .and_then(|_| mode_info.2.satisfies_then(c))
     }
 
-    fn get_symbol(&self, id: &UniqueId) -> Type
+    fn with_symbol<F>(&mut self, symbol: &UniqueId, f: F) -> Option<Type>
+    where F: FnOnce(&mut Self, Option<Type>) -> Option<Type>
     {
-        self.symbols
-            .get_global(id)
-            .cloned()
-            .expect(format!("Id {id} not found. Did Scope Checking Succeed properly?").as_str())
+        let res = self.symbols
+                    .get_global(symbol)
+                    .cloned();
+
+        f(
+            self,
+            res
+        ).inspect(|x| self.symbols.set_untyped(symbol.clone(), x.clone()))
     }
 
     fn get_func_info(&self, id: &UniqueId) -> FunctionTypeInfo
     {
-        self.symbols.funcs
-            .get(id)
+        self.symbols
+            .get_func_info(id)
             .cloned()
             .expect(format!("Id {id} not found. Did Scope Checking Succeed properly").as_str())
     }
@@ -269,10 +285,10 @@ mod type_check_tests
     #[test]
     fn if_stmt_check()
     {
-        let table = SymbolTable::new();
+        let mut table = SymbolTable::new();
         let mut errors = Vec::new();
 
-        let checker = TypeChecker::new(&mut errors, &table);
+        let mut checker = TypeChecker::new(&mut errors, &mut table);
 
         let good_if_stmt = Stmt::If {
             cond: Box::new(Expr::Literal(Literal::Bool(true))),
@@ -341,10 +357,10 @@ mod type_check_tests
     #[ignore = "doesnt work without scope checking first"]
     fn assign_check()
     {
-        let table = SymbolTable::new();
+        let mut table = SymbolTable::new();
         let mut errors = Vec::new();
 
-        let checker = TypeChecker::new(&mut errors, &table);
+        let mut checker = TypeChecker::new(&mut errors, &mut table);
 
         let good_assign = Expr::Stmt(Stmt::Declare {
             id: "a".into(),

@@ -5,7 +5,7 @@ use itertools::Itertools;
 use crate::{
     common::ScopeMethods,
     frontend::{
-        errors::CompileError, parsers::{expr::Expr, func::Func, stmt::Stmt, types::Type, Prog}, semantic::symbol::{gen_id, FunctionTypeInfo, SymbolTableBuffer, UniqueId}, ErrorBuffer, Ident
+        errors::CompileError, parsers::{expr::Expr, func::Func, stmt::Stmt, types::Type, Prog}, semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId}, ErrorBuffer, Ident
     },
 };
 
@@ -71,15 +71,23 @@ impl Scopes
 
     fn new_global_symbol(&mut self, ty: Type, name: Ident) -> UniqueId
     {
-        let uid = gen_id(name, self.symbols.borrow().globals.len());
-        self.symbols.borrow_mut().globals.insert(uid.clone(), ty);
+        let uid = self.symbols.borrow().new_global_id(name);
+        self.symbols.borrow_mut().insert_global(uid.clone(), ty);
 
         uid
     }
 
-    fn new_var_symbol(&mut self, ty: Type, name: Ident) -> UniqueId
+    fn new_untyped_symbol(&mut self, name: Ident) -> UniqueId
     {
-        let uid = self.new_global_symbol(ty, name.clone());
+        let uid = self.symbols.borrow().new_global_id(name);
+        self.symbols.borrow_mut().insert_untyped(uid.clone());
+
+        uid
+    }
+
+    fn new_var_symbol(&mut self, ty: Option<Type>, name: Ident) -> UniqueId
+    {
+        let uid = if let Some(t) = ty { self.new_global_symbol(t, name.clone()) } else { self.new_untyped_symbol(name.clone()) };
         self.local.insert(name, uid.clone());
 
         uid
@@ -129,17 +137,16 @@ impl Scopes
                 let (id, ty) = x.clone();
                 scope.can_define_var(&id);
 
-                let uid = scope.new_var_symbol(ty.clone(), id);
+                let uid = scope.new_var_symbol(Some(ty.clone()), id);
                 ((uid, ty.clone()), ty)
             }).unzip();
 
             let type_info = FunctionTypeInfo { params: param_types, return_type: ret_type.clone() };
 
-            scope.symbols.borrow_mut().undefined.remove(&func_uid);
-
-            scope.symbols.borrow_mut().funcs
-                .insert(func_uid.clone(), type_info)
+            scope.symbols.borrow_mut()
+                .insert_func(func_uid.clone(), Some(type_info))
                 .inspect(|x| {
+                    // Declare redeclaration error
                     todo!()
                 });
 
@@ -176,10 +183,7 @@ impl Scopes
     fn check_call(&mut self, id: &Ident, params: &Vec<Expr>) -> (UniqueId, Vec<Expr>)
     {
         let uid = id.clone();
-        if !self.symbols.borrow().funcs.contains_key(id)
-        {
-            self.symbols.borrow_mut().undefined.insert(uid.clone());
-        }
+        self.symbols.borrow_mut().insert_func(uid.clone(), None);
 
         (
             uid,
@@ -203,14 +207,14 @@ impl Scopes
             },
             Stmt::Declare { id, ty, rvalue } =>
             {
-                let var_type = ty.as_ref().unwrap_or(todo!()); // TODO: Need to find nice way of working out implicit typing
+                let var_type = ty.as_ref();
+
                 let ex = self.check_expr(rvalue);
 
                 // Check identifier in scope
                 self.can_define_var(id);
 
-
-                let uid = self.new_var_symbol(*var_type, *id);
+                let uid = self.new_var_symbol(var_type.cloned(), id.clone());
 
                 Stmt::Assign {
                     id: uid,

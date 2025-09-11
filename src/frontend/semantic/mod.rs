@@ -24,10 +24,10 @@ pub fn semantic_check(prog: &Prog) -> Result<SemProg, Vec<CompileError>>
     // Scope Checking
     let new_prog = Scopes::eval_prog(prog, error_buffer.clone(), symbols_buffer.clone());
 
-    let symbols = SymbolTable::from_buffer(symbols_buffer);
+    let mut symbols = SymbolTable::from_buffer(symbols_buffer)?;
 
     // Type Checking
-    TypeChecker::new(error_buffer.borrow_mut().as_mut(), &symbols).check_prog(&new_prog);
+    TypeChecker::new(error_buffer.borrow_mut().as_mut(), &mut symbols).check_prog(&new_prog);
 
     let errors = error_buffer.take();
     if errors.is_empty()
