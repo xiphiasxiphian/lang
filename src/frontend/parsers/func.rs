@@ -8,13 +8,9 @@ use nom::{
 use nom_supreme::{ParserExt, tag::complete::tag};
 
 use crate::frontend::{
-    Ident,
     parsers::{
-        ParseResult, Span,
-        common::{parse_ident, ws},
-        expr::{Expr, parse_block},
-        types::{Type, parse_type},
-    },
+        common::{parse_ident, ws, Keyword}, expr::{parse_block, Expr}, types::{parse_type, Type}, ParseResult, Span
+    }, Ident
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -39,7 +35,7 @@ fn parse_parameter(input: Span) -> ParseResult<(String, Type)>
 pub fn parse_func(input: Span) -> ParseResult<Func>
 {
     (
-        preceded(ws(tag("fun")), parse_ident),
+        preceded(ws(tag(Keyword::Func.into())), parse_ident),
         delimited(
             tag("("),
             separated_list0(ws(tag(",")), parse_parameter),

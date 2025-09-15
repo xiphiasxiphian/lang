@@ -11,6 +11,7 @@ use nom::sequence::{delimited, preceded, terminated};
 use nom_supreme::parser_ext::ParserExt;
 use nom_supreme::tag::complete::tag;
 
+use crate::common::ScopeMethods;
 use crate::frontend::parsers::common::string::span_parse_string;
 use crate::frontend::parsers::common::{parse_ident, ws};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
@@ -138,11 +139,11 @@ pub fn parse_expr(input: Span) -> ParseResult<Expr>
             .into_array()),
         ws(alt((
             parse_literal,
-            parse_ident.map(|x| Expr::Ident(x)),
             parse_call,
             parse_sub_expr,
             parse_block,
             parse_stmt.map(|x| Expr::Stmt(x)),
+            parse_ident.map(|x| Expr::Ident(x)),
         ))),
         |op: Operation<UnaryOpMode, UnaryOpMode, BinOpMode, Expr>| {
             use Operation::*;

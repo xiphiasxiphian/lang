@@ -9,13 +9,9 @@ use nom::{
 use nom_supreme::tag::complete::tag;
 
 use crate::frontend::{
-    Ident,
     parsers::{
-        ParseResult, Span,
-        common::{parse_ident, ws},
-        expr::{Expr, parse_block, parse_expr},
-        types::{Type, parse_type},
-    },
+        common::{parse_ident, ws, Keyword}, expr::{parse_block, parse_expr, Expr}, types::{parse_type, Type}, ParseResult, Span
+    }, Ident
 };
 
 type _Expr = Box<Expr>;
@@ -49,7 +45,7 @@ pub enum Stmt
 fn parse_declare(input: Span) -> ParseResult<Stmt>
 {
     (
-        preceded(ws(tag("let")), parse_ident),
+        preceded(ws(tag(Keyword::Decl.into())), parse_ident),
         opt(preceded(ws(char(':')), parse_type)),
         preceded(ws(char('=')), parse_expr),
     )
@@ -75,11 +71,11 @@ fn parse_if(input: Span) -> ParseResult<Stmt>
 {
     (
         preceded(
-            ws(tag("if")),
+            ws(tag(Keyword::Cond.into())),
             delimited(ws(char('(')), parse_expr, ws(char(')'))),
         ),
         parse_block,
-        opt(preceded(ws(tag("else")), parse_block)),
+        opt(preceded(ws(tag(Keyword::CondElse.into())), parse_block)),
     )
         .map(|(cond, tt, ff)| Stmt::If {
             cond: Box::new(cond),
@@ -93,7 +89,7 @@ fn parse_while(input: Span) -> ParseResult<Stmt>
 {
     (
         preceded(
-            ws(tag("while")),
+            ws(tag(Keyword::Loop.into())),
             delimited(ws(char('(')), parse_expr, ws(char(')'))),
         ),
         parse_block,
@@ -107,6 +103,7 @@ fn parse_while(input: Span) -> ParseResult<Stmt>
 
 pub fn parse_stmt(input: Span) -> ParseResult<Stmt>
 {
+    println!("parse stmt");
     alt((parse_declare, parse_assign, parse_if, parse_while)).parse(input)
 }
 

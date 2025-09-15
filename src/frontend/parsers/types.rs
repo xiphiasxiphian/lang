@@ -47,6 +47,14 @@ impl Display for Type
     }
 }
 
+impl BasicType
+{
+    pub fn as_str(self) -> &'static str
+    {
+        TYPES[self]
+    }
+}
+
 static TYPES: LazyLock<EnumMap<BasicType, &'static str>> = LazyLock::new(|| {
     use BasicType::*;
 
