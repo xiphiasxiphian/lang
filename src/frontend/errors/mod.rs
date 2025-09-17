@@ -38,6 +38,13 @@ impl CompileError
         }
     }
 
+    pub fn raw_error(raw: String) -> Self
+    {
+        Self {
+            builder: ErrorBuilder::new().also_mut(|x| { x.with_summary(raw); })
+        }
+    }
+
     pub fn syntax_error(from: Span, context: Option<(String, String)>) -> Self
     {
         let (summary, reason) = context.unwrap_or_else(|| {

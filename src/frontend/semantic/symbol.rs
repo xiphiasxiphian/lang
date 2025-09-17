@@ -1,8 +1,6 @@
 use std::{cell::RefCell, collections::{HashMap, HashSet}, rc::Rc};
 
-use nom::Err;
-
-use crate::{common::ScopeMethods, frontend::{errors::CompileError, parsers::types::Type, Ident}};
+use crate::frontend::{errors::CompileError, parsers::types::Type, Ident};
 
 const SPECIAL_CHAR: char = '$';
 pub type UniqueId = String;

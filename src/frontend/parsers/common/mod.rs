@@ -55,6 +55,7 @@ where
 
 pub fn parse_ident(input: Span) -> ParseResult<Ident>
 {
+    // TODO: filter out keywords
     recognize(pair(
         alt((alpha1, tag("_"))),
         many0_count(alt((alphanumeric1, tag("_")))),

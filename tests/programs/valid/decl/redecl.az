@@ -1,5 +1,5 @@
 fun main()
 {
-    let a = 5;
+    let a: int = 5;
     a = 6;
 }

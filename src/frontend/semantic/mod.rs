@@ -8,7 +8,6 @@ pub mod scope;
 pub mod symbol;
 pub mod types;
 
-
 pub struct SemProg
 {
     funcs: Vec<Func>,

@@ -73,7 +73,7 @@ impl Config
 {
     pub fn from_args() -> Result<Self, ConfigError>
     {
-        let mut args = env::args();
+        let args = env::args();
 
         // First argument (that isnt the executable name)
         let filename = args.skip(1).next().ok_or(ConfigError::NoFileProvided)?;

@@ -56,13 +56,13 @@ impl BasicType
 }
 
 static TYPES: LazyLock<EnumMap<BasicType, &'static str>> = LazyLock::new(|| {
-    use BasicType::*;
+    use BasicType as B;
 
     enum_map! {
-        Int => "int",
-        Bool => "bool",
-        Char => "char",
-        String => "string"
+        B::Int => "int",
+        B::Bool => "bool",
+        B::Char => "char",
+        B::String => "string"
     }
 });
 
