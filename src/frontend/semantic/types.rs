@@ -1,16 +1,19 @@
 use std::{
     collections::HashSet,
     ops::{BitAnd, BitOr},
-    str::FromStr,
     sync::LazyLock,
 };
 
-use enum_map::{enum_map, Enum, EnumMap};
+use enum_map::{EnumMap, enum_map};
 
 use crate::frontend::{
     errors::CompileError,
     parsers::{
-        expr::{BinOpMode, Expr, Literal, UnaryOpMode}, func::Func, stmt::Stmt, types::{BasicType, Type}, Prog
+        Prog,
+        expr::{BinOpMode, Expr, Literal, UnaryOpMode},
+        func::Func,
+        stmt::Stmt,
+        types::{BasicType, Type},
     },
     semantic::symbol::{FunctionTypeInfo, SymbolTable, UniqueId},
 };
@@ -90,7 +93,7 @@ impl Type
 
     fn satisfies_then(self, c: &TypeContraint) -> Option<Self>
     {
-        if self.satisfies(c) { Some(self) } else { None }
+        self.satisfies(c).then_some(self)
     }
 }
 
@@ -109,14 +112,18 @@ impl<'a> TypeChecker<'a>
 
     pub fn check_prog(&mut self, prog: &Prog)
     {
-        prog.funcs.iter().for_each(|x| {self.check_func(x);});
+        prog.funcs.iter().for_each(|x| {
+            self.check_func(x);
+        });
     }
 
     fn check_type(&mut self, ty: Type, c: &TypeContraint) -> Option<Type>
     {
         ty.clone().satisfies_then(c).or_else(|| {
             // Temporary Error, TODO: Add proper type error
-            self.errors.push(CompileError::raw_error(format!("contraint: {c:?} ty: {ty}",)));
+            self.errors.push(CompileError::raw_error(format!(
+                "contraint: {c:?} ty: {ty}",
+            )));
             None
         })
     }
@@ -126,22 +133,28 @@ impl<'a> TypeChecker<'a>
         match expr
         {
             Expr::Literal(lit) => self.check_literal(lit, c),
-            Expr::Ident(id) => {
-                let ty = self.symbols.get_global(id)
-                .cloned()
-                .expect("Failed to get expected global while type checking");
+            Expr::Ident(id) =>
+            {
+                let ty = self
+                    .symbols
+                    .get_global(id)
+                    .cloned()
+                    .expect("Failed to get expected global while type checking");
 
                 self.check_type(ty, c)
             }
-            Expr::Call(id, ps) => {
+            Expr::Call(id, ps) =>
+            {
                 let info = self.get_func_info(id);
 
                 // Length Check
-                if info.params.len() != ps.len() {
-                    // Report Error
+                if info.params.len() != ps.len()
+                {
+                    // TODO: Report Error
                 }
 
-                for (p, ty) in ps.iter().zip(info.params) {
+                for (p, ty) in ps.iter().zip(info.params)
+                {
                     self.check_expr(p, &TypeContraint::Is(ty));
                 }
 
@@ -171,13 +184,16 @@ impl<'a> TypeChecker<'a>
 
     fn check_literal(&mut self, lit: &Literal, c: &TypeContraint) -> Option<Type>
     {
-        self.check_type(match lit
-        {
-            Literal::Int(_) => Type::BasicType(BasicType::Int),
-            Literal::Char(_) => Type::BasicType(BasicType::Char),
-            Literal::Bool(_) => Type::BasicType(BasicType::Bool),
-            Literal::String(_) => Type::BasicType(BasicType::String),
-        }, c)
+        self.check_type(
+            match lit
+            {
+                Literal::Int(_) => Type::BasicType(BasicType::Int),
+                Literal::Char(_) => Type::BasicType(BasicType::Char),
+                Literal::Bool(_) => Type::BasicType(BasicType::Bool),
+                Literal::String(_) => Type::BasicType(BasicType::String),
+            },
+            c,
+        )
     }
 
     fn check_stmt(&mut self, stmt: &Stmt, c: &TypeContraint) -> Option<Type>
@@ -193,22 +209,19 @@ impl<'a> TypeChecker<'a>
                 let body_typed = ff
                     .as_ref()
                     .map(|el| self.check_expr(el, &TypeContraint::Is(tt_typed?)))
-                    .unwrap_or(self.check_type(Type::Void, c));
+                    .unwrap_or_else(|| self.check_type(Type::Void, c));
 
                 cond_typed.and(body_typed)
             }
-            Stmt::Assign { id, rvalue } =>
-            {
-                self.with_symbol(
-                    id,
-                    |checker, x| checker.check_expr(
-                        rvalue.as_ref(),
-                        &(&(x
-                            .map(|t| TypeContraint::Is(t))
-                            .unwrap_or(TypeContraint::Any)) & c)
-                    )
+            Stmt::Assign { id, rvalue } => self.with_symbol(id, |checker, x| {
+                checker.check_expr(
+                    rvalue.as_ref(),
+                    &(&(x
+                        .map(|t| TypeContraint::Is(t))
+                        .unwrap_or(TypeContraint::Any))
+                        & c),
                 )
-            }
+            }),
             Stmt::While { cond, then } =>
             {
                 let cond_typed =
@@ -247,12 +260,12 @@ impl<'a> TypeChecker<'a>
         c: &TypeContraint,
     ) -> Option<Type>
     {
-        use BinOpMode::*;
+        use BinOpMode as B;
 
         // Kinda temporary as won't work with operators being used for multiple different types.
         let mode_info = match mode
         {
-            Add | Sub | Mul | Div => (
+            B::Add | B::Sub | B::Mul | B::Div => (
                 TypeContraint::Is(Type::BasicType(BasicType::Int)),
                 TypeContraint::Is(Type::BasicType(BasicType::Int)),
                 Type::BasicType(BasicType::Int),
@@ -265,16 +278,12 @@ impl<'a> TypeChecker<'a>
     }
 
     fn with_symbol<F>(&mut self, symbol: &UniqueId, f: F) -> Option<Type>
-    where F: FnOnce(&mut Self, Option<Type>) -> Option<Type>
+    where
+        F: FnOnce(&mut Self, Option<Type>) -> Option<Type>,
     {
-        let res = self.symbols
-                    .get_global(symbol)
-                    .cloned();
+        let res = self.symbols.get_global(symbol).cloned();
 
-        f(
-            self,
-            res
-        ).inspect(|x| self.symbols.set_untyped(symbol.clone(), x.clone()))
+        f(self, res).inspect(|x| self.symbols.set_untyped(symbol.clone(), x.clone()))
     }
 
     fn get_func_info(&self, id: &UniqueId) -> FunctionTypeInfo
@@ -289,13 +298,15 @@ impl<'a> TypeChecker<'a>
 #[cfg(test)]
 mod type_check_tests
 {
+    use crate::frontend::Errors;
+
     use super::*;
 
     #[test]
     fn if_stmt_check()
     {
         let mut table = SymbolTable::new();
-        let mut errors = Vec::new();
+        let mut errors = Errors::new();
 
         let mut checker = TypeChecker::new(&mut errors, &mut table);
 
@@ -367,7 +378,7 @@ mod type_check_tests
     fn assign_check()
     {
         let mut table = SymbolTable::new();
-        let mut errors = Vec::new();
+        let mut errors = Errors::new();
 
         let mut checker = TypeChecker::new(&mut errors, &mut table);
 

@@ -1,20 +1,19 @@
 pub mod string;
 
-use std::fmt::Display;
 use std::str::FromStr;
 
 use enum_map::Enum;
 use nom::branch::alt;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
-use nom::combinator::{recognize, not};
+use nom::combinator::recognize;
 use nom::error::ParseError;
 use nom::multi::many0_count;
 use nom::sequence::{delimited, pair};
 use nom::{AsChar, Input, Parser};
 use nom_supreme::tag::complete::tag;
 
-use crate::frontend::parsers::types::BasicType;
 use crate::frontend::Ident;
+use crate::frontend::parsers::types::BasicType;
 use crate::frontend::parsers::{ParseResult, Span};
 
 #[derive(Enum, Clone, Debug)]
@@ -30,7 +29,8 @@ pub enum Keyword
 
 impl From<Keyword> for &str
 {
-    fn from(value: Keyword) -> Self {
+    fn from(value: Keyword) -> Self
+    {
         use Keyword::*;
         match value
         {
@@ -39,7 +39,7 @@ impl From<Keyword> for &str
             Loop => "while",
             Decl => "let",
             Type(t) => t.as_str(),
-            Func => "fun"
+            Func => "fun",
         }
     }
 }

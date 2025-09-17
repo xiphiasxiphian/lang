@@ -8,7 +8,8 @@ use crate::{
     common::ScopeMethods,
     frontend::{
         errors::builder::{ErrorBuilder, LineAttachment, SourceLine},
-        parsers::{types::Type, Span}, semantic::types::TypeContraint,
+        parsers::{Span, types::Type},
+        semantic::types::TypeContraint,
     },
 };
 
@@ -41,7 +42,9 @@ impl CompileError
     pub fn raw_error(raw: String) -> Self
     {
         Self {
-            builder: ErrorBuilder::new().also_mut(|x| { x.with_summary(raw); })
+            builder: ErrorBuilder::new().also_mut(|x| {
+                x.with_summary(raw);
+            }),
         }
     }
 
@@ -65,8 +68,7 @@ impl CompileError
         });
 
         let builder = ErrorBuilder::new().also_mut(|x| {
-            x
-                .with_type("Syntax Error".into())
+            x.with_type("Syntax Error".into())
                 .with_summary(summary)
                 .with_location("".into(), from.location_line() as usize, col)
                 .with_source_line(line);
@@ -81,7 +83,7 @@ impl CompileError
         {
             TypeContraint::Is(ty) => format!("which doesn't match expected {ty}"),
             TypeContraint::IsComparibleTo(ty) => format!("which is not comparible to {ty}"),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let summary = format!("Unexpected type {found}");
@@ -97,9 +99,6 @@ impl CompileError
             x.add_attachment(LineAttachment::Highlight('^', range, Some(reason)));
         });
     }
-
-
-
 
     // Helpers for converting ErrorTree into CompileError
 
@@ -118,7 +117,7 @@ impl CompileError
     {
         match error
         {
-            ErrorVariant::Expected(Expectation::Char(c)) => Some(format!("\'{c}\'")),
+            ErrorVariant::Expected(Expectation::Char(c)) => Some(format!("'{c}'")),
             ErrorVariant::Expected(Expectation::Tag(s)) => Some(format!("\"{s}\"")),
             ErrorVariant::Expected(e) => Some(e.to_string()),
             ErrorVariant::Kind(kind) => Some(match kind

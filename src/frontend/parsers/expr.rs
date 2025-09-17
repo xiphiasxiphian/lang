@@ -11,7 +11,6 @@ use nom::sequence::{delimited, preceded, terminated};
 use nom_supreme::parser_ext::ParserExt;
 use nom_supreme::tag::complete::tag;
 
-use crate::common::ScopeMethods;
 use crate::frontend::parsers::common::string::span_parse_string;
 use crate::frontend::parsers::common::{parse_ident, ws};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};

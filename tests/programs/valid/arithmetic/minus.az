@@ -1,0 +1,4 @@
+fun main()
+{
+    let a: int = 10 - 5;
+}

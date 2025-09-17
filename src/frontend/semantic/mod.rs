@@ -1,7 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::frontend::{
-    errors::CompileError, parsers::{func::Func, Prog}, semantic::{scope::Scopes, symbol::SymbolTable, types::TypeChecker}, Errors
+    Errors,
+    errors::CompileError,
+    parsers::{Prog, func::Func},
+    semantic::{scope::Scopes, symbol::SymbolTable, types::TypeChecker},
 };
 
 pub mod scope;

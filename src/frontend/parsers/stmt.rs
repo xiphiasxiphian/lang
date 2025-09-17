@@ -9,9 +9,13 @@ use nom::{
 use nom_supreme::tag::complete::tag;
 
 use crate::frontend::{
+    Ident,
     parsers::{
-        common::{parse_ident, ws, Keyword}, expr::{parse_block, parse_expr, Expr}, types::{parse_type, Type}, ParseResult, Span
-    }, Ident
+        ParseResult, Span,
+        common::{Keyword, parse_ident, ws},
+        expr::{Expr, parse_block, parse_expr},
+        types::{Type, parse_type},
+    },
 };
 
 type _Expr = Box<Expr>;
@@ -72,7 +76,7 @@ fn parse_if(input: Span) -> ParseResult<Stmt>
     (
         preceded(
             ws(tag(Keyword::Cond.into())),
-            delimited(ws(char('(')), parse_expr, ws(char(')'))),
+            ws(parse_expr)
         ),
         parse_block,
         opt(preceded(ws(tag(Keyword::CondElse.into())), parse_block)),

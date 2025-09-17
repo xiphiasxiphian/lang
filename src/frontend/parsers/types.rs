@@ -30,19 +30,21 @@ pub enum BasicType
 
 impl Display for BasicType
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
         write!(f, "{}", TYPES[self.clone()])
     }
 }
 
 impl Display for Type
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
         match self
         {
             Type::Void => write!(f, "void"),
             Type::BasicType(bt) => write!(f, "{}", bt),
-            Type::Array(inner) => write!(f, "[{}]", inner.as_ref())
+            Type::Array(inner) => write!(f, "[{}]", inner.as_ref()),
         }
     }
 }
@@ -83,11 +85,7 @@ fn parse_array(input: Span) -> ParseResult<Type>
 
 pub fn parse_type(input: Span) -> ParseResult<Type>
 {
-    alt((
-        tag("void").value(Type::Void),
-        parse_basic_type,
-        parse_array,
-    ))
-    .context("Expected a type")
-    .parse(input)
+    alt((tag("void").value(Type::Void), parse_basic_type, parse_array))
+        .context("Expected a type")
+        .parse(input)
 }

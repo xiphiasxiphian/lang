@@ -1,0 +1,4 @@
+fun foo() -> bool
+{
+    if true { true } else { false }
+}

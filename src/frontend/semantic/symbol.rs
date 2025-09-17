@@ -1,6 +1,10 @@
-use std::{cell::RefCell, collections::{HashMap, HashSet}, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
-use crate::frontend::{errors::CompileError, parsers::types::Type, Ident};
+use crate::frontend::{Ident, errors::CompileError, parsers::types::Type};
 
 const SPECIAL_CHAR: char = '$';
 pub type UniqueId = String;
@@ -28,7 +32,6 @@ pub struct SymbolTable
 
 impl SymbolTable
 {
-
     pub fn new() -> Self
     {
         Self::default()
@@ -48,26 +51,26 @@ impl SymbolTable
         }
         else
         {
-            Err
-            (
-                result.undefined
-                    .iter()
-                    .map(|x| todo!())
-                    .collect()
-            )
+            Err(result.undefined.iter().map(|x| todo!()).collect())
         }
     }
 
-    pub fn insert_func(&mut self, id: UniqueId, info: Option<FunctionTypeInfo>) -> Option<UniqueId>
+    pub fn insert_func(&mut self, id: UniqueId, info: Option<FunctionTypeInfo>)
+    -> Option<UniqueId>
     {
         match info
         {
-            Some(t) => {
+            Some(t) =>
+            {
                 self.undefined.remove(&id);
                 self.funcs.insert(id.clone(), t).map(|_| id)
             }
-            None => {
-                if !self.funcs.contains_key(&id) { self.undefined.insert(id); }
+            None =>
+            {
+                if !self.funcs.contains_key(&id)
+                {
+                    self.undefined.insert(id);
+                }
                 None
             }
         }
@@ -95,7 +98,10 @@ impl SymbolTable
 
     pub fn set_untyped(&mut self, id: UniqueId, ty: Type)
     {
-        if self.untyped.remove(&id) { self.globals.insert(id, ty); }
+        if self.untyped.remove(&id)
+        {
+            self.globals.insert(id, ty);
+        }
     }
 
     pub fn get_func_info(&self, id: &UniqueId) -> Option<&FunctionTypeInfo>

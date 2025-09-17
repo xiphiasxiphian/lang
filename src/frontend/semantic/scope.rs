@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use itertools::Itertools;
-
 use crate::{
     common::ScopeMethods,
     frontend::{
-        errors::CompileError, parsers::{expr::Expr, func::Func, stmt::Stmt, types::Type, Prog}, semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId}, ErrorBuffer, Ident
+        ErrorBuffer, Ident,
+        errors::CompileError,
+        parsers::{Prog, expr::Expr, func::Func, stmt::Stmt, types::Type},
+        semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId},
     },
 };
 
@@ -87,7 +88,14 @@ impl Scopes
 
     fn new_var_symbol(&mut self, ty: Option<Type>, name: Ident) -> UniqueId
     {
-        let uid = if let Some(t) = ty { self.new_global_symbol(t, name.clone()) } else { self.new_untyped_symbol(name.clone()) };
+        let uid = if let Some(t) = ty
+        {
+            self.new_global_symbol(t, name.clone())
+        }
+        else
+        {
+            self.new_untyped_symbol(name.clone())
+        };
         self.local.insert(name, uid.clone());
 
         uid
@@ -126,24 +134,37 @@ impl Scopes
 
     fn check_func(&mut self, func: &Func) -> Func
     {
-        let Func { name, parameters, return_type, block } = func;
+        let Func {
+            name,
+            parameters,
+            return_type,
+            block,
+        } = func;
 
         let func_uid = name.clone(); // Function names are already unique
         let ret_type = return_type.clone();
 
         self.with_scope(|scope| {
             // This could be done lazily but whatever
-            let (new_params, param_types) = parameters.iter().map(|x| {
-                let (id, ty) = x.clone();
-                scope.can_define_var(&id);
+            let (new_params, param_types) = parameters
+                .iter()
+                .map(|x| {
+                    let (id, ty) = x.clone();
+                    scope.can_define_var(&id);
 
-                let uid = scope.new_var_symbol(Some(ty.clone()), id);
-                ((uid, ty.clone()), ty)
-            }).unzip();
+                    let uid = scope.new_var_symbol(Some(ty.clone()), id);
+                    ((uid, ty.clone()), ty)
+                })
+                .unzip();
 
-            let type_info = FunctionTypeInfo { params: param_types, return_type: ret_type.clone() };
+            let type_info = FunctionTypeInfo {
+                params: param_types,
+                return_type: ret_type.clone(),
+            };
 
-            scope.symbols.borrow_mut()
+            scope
+                .symbols
+                .borrow_mut()
                 .insert_func(func_uid.clone(), Some(type_info))
                 .inspect(|x| {
                     // Declare redeclaration error
@@ -164,10 +185,11 @@ impl Scopes
         match expr
         {
             Expr::Literal(lit) => Expr::Literal(lit.clone()),
-            Expr::Call(id, params) => {
+            Expr::Call(id, params) =>
+            {
                 let (x, y) = self.check_call(id, params);
                 Expr::Call(x, y)
-            },
+            }
             Expr::Ident(id) => Expr::Ident(self.check_ident(id)),
             Expr::UnaryOp(mode, e) => Expr::UnaryOp(mode.clone(), Box::new(self.check_expr(e))),
             Expr::BinaryOp(mode, e1, e2) => Expr::BinaryOp(
@@ -185,10 +207,7 @@ impl Scopes
         let uid = id.clone();
         self.symbols.borrow_mut().insert_func(uid.clone(), None);
 
-        (
-            uid,
-            params.iter().map(|x| self.check_expr(x)).collect()
-        )
+        (uid, params.iter().map(|x| self.check_expr(x)).collect())
     }
 
     fn check_ident(&mut self, ident: &Ident) -> Ident

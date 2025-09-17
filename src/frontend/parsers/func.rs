@@ -1,6 +1,6 @@
 use nom::{
     Parser,
-    combinator::{cut, opt},
+    combinator::opt,
     multi::separated_list0,
     sequence::{delimited, preceded, separated_pair},
 };
@@ -8,9 +8,13 @@ use nom::{
 use nom_supreme::{ParserExt, tag::complete::tag};
 
 use crate::frontend::{
+    Ident,
     parsers::{
-        common::{parse_ident, ws, Keyword}, expr::{parse_block, Expr}, types::{parse_type, Type}, ParseResult, Span
-    }, Ident
+        ParseResult, Span,
+        common::{Keyword, parse_ident, ws},
+        expr::{Expr, parse_block},
+        types::{Type, parse_type},
+    },
 };
 
 #[derive(Debug, PartialEq, Eq)]
