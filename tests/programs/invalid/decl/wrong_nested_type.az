@@ -1,0 +1,4 @@
+fun main()
+{
+    let a: string = (let b: int = 5);
+}

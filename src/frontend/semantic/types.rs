@@ -9,13 +9,9 @@ use enum_map::{EnumMap, enum_map};
 use crate::frontend::{
     errors::CompileError,
     parsers::{
-        Prog,
-        expr::{BinOpMode, Expr, Literal, UnaryOpMode},
-        func::Func,
-        stmt::Stmt,
-        types::{BasicType, Type},
+        expr::{BinOpMode, Expr, Literal, UnaryOpMode}, func::Func, stmt::Stmt, types::{BasicType, Type}, Prog
     },
-    semantic::symbol::{FunctionTypeInfo, SymbolTable, UniqueId},
+    semantic::symbol::{FunctionTypeInfo, SymbolTable, UniqueId}, Errors,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -83,10 +79,7 @@ impl Type
             (t, TypeContraint::And(c1, c2)) => t.satisfies(c1) && t.satisfies(c2),
             (Type::Void, TypeContraint::Is(Type::Void)) => true,
             (Type::Void, _) => false,
-            (Type::BasicType(basic), constr) =>
-            {
-                BASIC_TYPE_CONSTRAINTS[basic.clone()].contains(constr)
-            }
+            (Type::BasicType(basic), constr) => BASIC_TYPE_CONSTRAINTS[basic.clone()].contains(constr),
             (Type::Array(inner), _) => todo!(),
         }
     }
@@ -99,13 +92,13 @@ impl Type
 
 pub struct TypeChecker<'a>
 {
-    errors: &'a mut Vec<CompileError>,
+    errors: &'a mut Errors,
     symbols: &'a mut SymbolTable,
 }
 
 impl<'a> TypeChecker<'a>
 {
-    pub fn new(errors: &'a mut Vec<CompileError>, symbols: &'a mut SymbolTable) -> Self
+    pub fn new(errors: &'a mut Errors, symbols: &'a mut SymbolTable) -> Self
     {
         TypeChecker { errors, symbols }
     }
@@ -298,8 +291,6 @@ impl<'a> TypeChecker<'a>
 #[cfg(test)]
 mod type_check_tests
 {
-    use crate::frontend::Errors;
-
     use super::*;
 
     #[test]

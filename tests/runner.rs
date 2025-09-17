@@ -1,22 +1,32 @@
 use std::path::Path;
 
-use assert_cmd::Command;
+use assert_cmd::{assert::Assert, Command};
 
 const VALID_PATH: &str = "./tests/programs/valid";
 const INVALID_PATH: &str = "./tests/programs/invalid";
 
 const FILE_PATTERN: &str = r"^.*\.az$";
 
+fn run_path(path: &Path) -> Result<Assert, assert_cmd::cargo::CargoError>
+{
+    Ok(
+        Command::cargo_bin("lang")?
+        .arg("--fail").arg("100") // Used to filter out compiler panics or config errors
+        .arg(path)
+        .assert()
+    )
+}
+
 fn valids(path: &Path) -> datatest_stable::Result<()>
 {
-    Command::cargo_bin("lang")?.arg(path).assert().success();
+    run_path(path)?.success();
 
     Ok(())
 }
 
 fn invalids(path: &Path) -> datatest_stable::Result<()>
 {
-    Command::cargo_bin("lang")?.arg(path).assert().failure();
+    run_path(path)?.code(100).failure();
 
     Ok(())
 }
