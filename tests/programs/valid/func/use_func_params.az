@@ -1,0 +1,4 @@
+fun double(a: int) -> int
+{
+    a * 2
+}

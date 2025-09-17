@@ -1,0 +1,4 @@
+fun main()
+{
+    let a: string = "Hello, World!";
+}
