@@ -107,7 +107,6 @@ fn parse_while(input: Span) -> ParseResult<Stmt>
 
 pub fn parse_stmt(input: Span) -> ParseResult<Stmt>
 {
-    println!("parse stmt");
     alt((parse_declare, parse_assign, parse_if, parse_while)).parse(input)
 }
 

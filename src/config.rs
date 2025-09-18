@@ -140,7 +140,8 @@ impl Config
             }
         }
 
-        Ok(config)
+
+        set_filename.then_some(config).ok_or(ConfigError::NoFileProvided)
     }
 
     fn read_file(&self) -> Result<String, ConfigError>

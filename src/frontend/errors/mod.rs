@@ -120,20 +120,20 @@ impl CompileError
             ErrorVariant::Expected(Expectation::Char(c)) => Some(format!("'{c}'")),
             ErrorVariant::Expected(Expectation::Tag(s)) => Some(format!("\"{s}\"")),
             ErrorVariant::Expected(e) => Some(e.to_string()),
-            ErrorVariant::Kind(kind) => Some(match kind
+            ErrorVariant::Kind(kind) => match kind
             {
-                ErrorKind::Alpha => Expectation::<Span>::Alpha.to_string(),
-                ErrorKind::Digit => Expectation::<Span>::Digit.to_string(),
-                ErrorKind::AlphaNumeric => Expectation::<Span>::AlphaNumeric.to_string(),
-                ErrorKind::BinDigit => "a binary digit".into(),
-                ErrorKind::Float => "a float".into(),
-                ErrorKind::HexDigit => Expectation::<Span>::HexDigit.to_string(),
-                ErrorKind::MultiSpace | ErrorKind::Space => "whitespace".into(),
-                ErrorKind::Char => "a character".into(),
-                ErrorKind::OctDigit => Expectation::<Span>::OctDigit.to_string(),
-                ErrorKind::Eof => "the end of the file".into(),
-                _ => todo!(),
-            }),
+                ErrorKind::Alpha => Some(Expectation::<Span>::Alpha.to_string()),
+                ErrorKind::Digit => Some(Expectation::<Span>::Digit.to_string()),
+                ErrorKind::AlphaNumeric => Some(Expectation::<Span>::AlphaNumeric.to_string()),
+                ErrorKind::BinDigit => Some("a binary digit".into()),
+                ErrorKind::Float => Some("a float".into()),
+                ErrorKind::HexDigit => Some(Expectation::<Span>::HexDigit.to_string()),
+                ErrorKind::MultiSpace | ErrorKind::Space => Some("whitespace".into()),
+                ErrorKind::Char => Some("a character".into()),
+                ErrorKind::OctDigit => Some(Expectation::<Span>::OctDigit.to_string()),
+                ErrorKind::Eof => Some("the end of the file".into()),
+                _ => None,
+            },
             ErrorVariant::External(_) => None,
         }
     }
