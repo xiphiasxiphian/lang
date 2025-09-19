@@ -1,0 +1,4 @@
+fun main()
+{
+    let a: int = if true { false } else { true };
+}

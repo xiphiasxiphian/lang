@@ -94,7 +94,7 @@ fn parse_while(input: Span) -> ParseResult<Stmt>
     (
         preceded(
             ws(tag(Keyword::Loop.into())),
-            delimited(ws(char('(')), parse_expr, ws(char(')'))),
+            ws(parse_expr),
         ),
         parse_block,
     )

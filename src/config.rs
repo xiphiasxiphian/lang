@@ -65,7 +65,7 @@ impl ExitStatus
 impl From<ConfigError> for ExitStatus
 {
     fn from(value: ConfigError) -> Self {
-        Self(Config::CONFIG_ERROR, Status::Config(value))
+        Self(Config::CONFIG_ERROR_CODE, Status::Config(value))
     }
 }
 
@@ -107,7 +107,7 @@ impl Termination for ExitStatus
 
 impl Config
 {
-    pub const CONFIG_ERROR: ExitCode = ExitCode::FAILURE;
+    pub const CONFIG_ERROR_CODE: ExitCode = ExitCode::FAILURE;
 
     pub fn from_args() -> Result<Self, ConfigError>
     {

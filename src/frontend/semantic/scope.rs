@@ -167,8 +167,8 @@ impl Scopes
                 .borrow_mut()
                 .insert_func(func_uid.clone(), Some(type_info))
                 .inspect(|x| {
-                    // Declare redeclaration error
-                    todo!()
+                    // TODO: Temporary Error
+                    scope.errors.borrow_mut().push(CompileError::blank_error());
                 });
 
             Func {
