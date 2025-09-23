@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
+
 use crate::{
     common::ScopeMethods,
     frontend::{
@@ -185,6 +187,7 @@ impl Scopes
         match expr
         {
             Expr::Literal(lit) => Expr::Literal(lit.clone()),
+            Expr::Array(exs) => Expr::Array(exs.iter().map(|x| self.check_expr(x)).collect_vec()),
             Expr::Call(id, params) =>
             {
                 let (x, y) = self.check_call(id, params);

@@ -1,0 +1,7 @@
+fun main()
+{
+    let a: string = {
+        let b: string = "Hello, World!";
+        b
+    };
+}

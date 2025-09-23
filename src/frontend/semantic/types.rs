@@ -5,14 +5,74 @@ use std::{
 };
 
 use enum_map::{EnumMap, enum_map};
+use itertools::Itertools;
+use nom::Err;
 
-use crate::frontend::{
+use crate::{common::ScopeMethods, frontend::{
     errors::CompileError,
     parsers::{
         expr::{BinOpMode, Expr, Literal, UnaryOpMode}, func::Func, stmt::Stmt, types::{BasicType, Type}, Prog
     },
     semantic::symbol::{FunctionTypeInfo, SymbolTable, UniqueId}, Errors,
-};
+}};
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum TypeCheckError
+{
+    Error,
+    Unknown(Type)
+}
+
+type CheckResult = Result<Type, TypeCheckError>;
+trait CheckResultMethods
+{
+    fn resolve(&self, c: &TypeContraint) -> CheckResult;
+    fn assert_known<F: FnOnce() -> ()>(self, err: F) -> CheckResult;
+}
+
+impl CheckResultMethods for CheckResult
+{
+    fn resolve(&self, c: &TypeContraint) -> CheckResult
+    {
+        match (self, c)
+        {
+            (Err(TypeCheckError::Unknown(Type::Array(_))), TypeContraint::Is(t @ Type::Array(_))) => Ok(t.clone()),
+            (Err(TypeCheckError::Unknown(Type::BasicType(_))), TypeContraint::Is(t @ Type::BasicType(_))) => Ok(t.clone()),
+            (Err(TypeCheckError::Unknown(_)), TypeContraint::Is(t)) => Ok(t.clone()),
+            (a @ Err(TypeCheckError::Unknown(_)), TypeContraint::And(x, y)) => {
+                let first = a.resolve(x);
+                let second = a.resolve(y);
+
+                match (first, second)
+                {
+                    (Ok(t1), Ok(t2)) if t1 == t2 => Ok(t1),
+                    (Ok(t), _) => Ok(t),
+                    (_, Ok(t)) => Ok(t),
+                    _ => a.clone()
+                }
+            }
+            (a @ Err(TypeCheckError::Unknown(_)), TypeContraint::Or(x, y)) => {
+                let first = a.resolve(x);
+                let second = a.resolve(y);
+
+                match (first, second)
+                {
+                    (Ok(t1), Ok(t2)) if t1 == t2 => Ok(t1),
+                    _ => a.clone()
+                }
+            }
+            (x, _) => x.clone(),
+        }
+    }
+
+    fn assert_known<F: FnOnce() -> ()>(self, err: F) -> CheckResult {
+        if let Err(TypeCheckError::Unknown(_)) = self
+        {
+            err()
+        }
+        self
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeContraint<'a>
@@ -80,7 +140,8 @@ impl Type
             (Type::Void, TypeContraint::Is(Type::Void)) => true,
             (Type::Void, _) => false,
             (Type::BasicType(basic), constr) => BASIC_TYPE_CONSTRAINTS[basic.clone()].contains(constr),
-            (Type::Array(inner), _) => todo!(),
+            (Type::Array(i1), TypeContraint::Is(Type::Array(i2))) => i1 == i2,
+            (Type::Array(_), _) => false,
         }
     }
 
@@ -106,26 +167,30 @@ impl<'a> TypeChecker<'a>
     pub fn check_prog(&mut self, prog: &Prog)
     {
         prog.funcs.iter().for_each(|x| {
-            self.check_func(x);
+            _ = self.check_func(x).assert_known(|| {
+                // TODO: Temporary Error
+                self.errors.push(CompileError::blank_error());
+            });
         });
     }
 
-    fn check_type(&mut self, ty: Type, c: &TypeContraint) -> Option<Type>
+    fn check_type(&mut self, ty: Type, c: &TypeContraint) -> CheckResult
     {
-        ty.clone().satisfies_then(c).or_else(|| {
+        ty.clone().satisfies_then(c).ok_or_else(|| {
             // Temporary Error, TODO: Add proper type error
             self.errors.push(CompileError::raw_error(format!(
                 "contraint: {c:?} ty: {ty}",
             )));
-            None
+            TypeCheckError::Error
         })
     }
 
-    fn check_expr(&mut self, expr: &Expr, c: &TypeContraint) -> Option<Type>
+    fn check_expr(&mut self, expr: &Expr, c: &TypeContraint) -> CheckResult
     {
         match expr
         {
             Expr::Literal(lit) => self.check_literal(lit, c),
+            Expr::Array(exs) => self.check_array(exs, c),
             Expr::Ident(id) =>
             {
                 let ty = self
@@ -148,7 +213,10 @@ impl<'a> TypeChecker<'a>
 
                 for (p, ty) in ps.iter().zip(info.params)
                 {
-                    self.check_expr(p, &TypeContraint::Is(ty));
+                    _ = self.check_expr(p, &TypeContraint::Is(ty)).assert_known(|| {
+                        // TODO: Temporary Error
+                        self.errors.push(CompileError::blank_error());
+                    });
                 }
 
                 self.check_type(info.return_type, c)
@@ -160,7 +228,10 @@ impl<'a> TypeChecker<'a>
             {
                 for ele in exs
                 {
-                    self.check_expr(ele, &TypeContraint::Any);
+                    _ = self.check_expr(ele, &TypeContraint::Any).assert_known(|| {
+                        // TODO: Temporary Error
+                        self.errors.push(CompileError::blank_error());
+                    });
                 }
 
                 ret.as_ref()
@@ -170,12 +241,12 @@ impl<'a> TypeChecker<'a>
         }
     }
 
-    fn check_func(&mut self, func: &Func) -> Option<Type>
+    fn check_func(&mut self, func: &Func) -> CheckResult
     {
         self.check_expr(&func.block, &TypeContraint::Is(func.return_type.clone()))
     }
 
-    fn check_literal(&mut self, lit: &Literal, c: &TypeContraint) -> Option<Type>
+    fn check_literal(&mut self, lit: &Literal, c: &TypeContraint) -> CheckResult
     {
         self.check_type(
             match lit
@@ -189,7 +260,21 @@ impl<'a> TypeChecker<'a>
         )
     }
 
-    fn check_stmt(&mut self, stmt: &Stmt, c: &TypeContraint) -> Option<Type>
+    fn check_array(&mut self, exprs: &Vec<Expr>, c: &TypeContraint) -> CheckResult
+    {
+        if exprs.is_empty() { Err(TypeCheckError::Unknown(Type::Array(Box::new(Type::Void)))).resolve(c) }
+        else
+        {
+            let iter = exprs.iter().map(|x| self.check_expr(x, &TypeContraint::Any)).unique().collect_vec();
+            let array_type = Type::Array(Box::new(
+                self.fold_types(iter.into_iter())?
+            ));
+
+            self.check_type(array_type, c)
+        }
+    }
+
+    fn check_stmt(&mut self, stmt: &Stmt, c: &TypeContraint) -> CheckResult
     {
         match stmt
         {
@@ -223,11 +308,11 @@ impl<'a> TypeChecker<'a>
 
                 cond_typed.and(body_typed)
             }
-            _ => unreachable!(), // Declares should have been filtered by scope checking
+            Stmt::Declare { .. } => unreachable!(), // Declares should have been filtered by scope checking
         }
     }
 
-    fn check_unary_op(&mut self, mode: &UnaryOpMode, p: &Expr, c: &TypeContraint) -> Option<Type>
+    fn check_unary_op(&mut self, mode: &UnaryOpMode, p: &Expr, c: &TypeContraint) -> CheckResult
     {
         let mode_info = match mode
         {
@@ -251,7 +336,7 @@ impl<'a> TypeChecker<'a>
         p1: &Expr,
         p2: &Expr,
         c: &TypeContraint,
-    ) -> Option<Type>
+    ) -> CheckResult
     {
         use BinOpMode as B;
 
@@ -270,9 +355,9 @@ impl<'a> TypeChecker<'a>
             .and_then(|_| self.check_type(mode_info.2, c))
     }
 
-    fn with_symbol<F>(&mut self, symbol: &UniqueId, f: F) -> Option<Type>
+    fn with_symbol<F>(&mut self, symbol: &UniqueId, f: F) -> CheckResult
     where
-        F: FnOnce(&mut Self, Option<Type>) -> Option<Type>,
+        F: FnOnce(&mut Self, Option<Type>) -> CheckResult,
     {
         let res = self.symbols.get_global(symbol).cloned();
 
@@ -285,6 +370,46 @@ impl<'a> TypeChecker<'a>
             .get_func_info(id)
             .cloned()
             .expect(format!("Id {id} not found. Did Scope Checking Succeed properly").as_str())
+    }
+
+    fn fold_types<T>(&mut self, it: T) -> CheckResult
+    where
+        T: Iterator<Item = CheckResult>,
+    {
+        it.reduce(|x, y| {
+            match (x, y)
+            {
+                (a @ Err(TypeCheckError::Error), _) => a,
+                (_, a @ Err(TypeCheckError::Error)) => a,
+                (u @ Err(TypeCheckError::Unknown(_)), Ok(t)) => u.resolve(&TypeContraint::Is(t)),
+                (Ok(t), u @ Err(TypeCheckError::Unknown(_))) => u.resolve(&TypeContraint::Is(t)),
+                (Err(TypeCheckError::Unknown(u1)), Err(TypeCheckError::Unknown(u2))) =>
+                    Err(Self::unify_unknowns(u1, u2).map(|x| TypeCheckError::Unknown(x)).unwrap_or(TypeCheckError::Error)),
+                (Ok(t1), Ok(t2)) => Self::unify_types(t1, t2).ok_or(TypeCheckError::Error),
+            }
+        }).unwrap_or_else(|| Err(TypeCheckError::Unknown(Type::Void)))
+        .also(|x| {
+            // Report Error. TODO: Temporary Error
+            if let Err(TypeCheckError::Error) = x { self.errors.push(CompileError::blank_error()); }
+        })
+    }
+
+    fn unify_types(t1: Type, t2: Type) -> Option<Type>
+    {
+        // This will be more complicated when more complex type interactions are introduced
+        (t1 == t2).then(|| t1)
+    }
+
+    fn unify_unknowns(u1: Type, u2: Type) -> Option<Type>
+    {
+        match (u1, u2)
+        {
+            (a @ Type::Array(_), Type::Array(_)) => Some(a),
+            (a @ Type::BasicType(_), Type::BasicType(_)) => Some(a),
+            (Type::Void, a) => Some(a),
+            (a, Type::Void) => Some(a),
+            _ => None,
+        }
     }
 }
 
@@ -346,22 +471,22 @@ mod type_check_tests
             ))),
         };
 
-        assert_eq!(
+        assert!(matches!(
             checker.check_expr(&Expr::Stmt(good_if_stmt), &TypeContraint::Any),
-            Some(Type::BasicType(BasicType::Int))
-        );
-        assert_eq!(
+            Ok(Type::BasicType(BasicType::Int))
+        ));
+        assert!(matches!(
             checker.check_expr(&Expr::Stmt(bad_if_stmt), &TypeContraint::Any),
-            None
-        );
-        assert_eq!(
+            Err(_)
+        ));
+        assert!(matches!(
             checker.check_expr(&Expr::Stmt(void_if_stmt), &TypeContraint::Any),
-            Some(Type::Void)
-        );
-        assert_eq!(
+            Ok(Type::Void)
+        ));
+        assert!(matches!(
             checker.check_expr(&Expr::Stmt(bad_cond_if_stmt), &TypeContraint::Any),
-            None
-        )
+            Err(_)
+        ));
     }
 
     #[test]
@@ -385,10 +510,10 @@ mod type_check_tests
             rvalue: Box::new(Expr::Literal(Literal::Char('a'))),
         });
 
-        assert_eq!(
+        assert!(matches!(
             checker.check_expr(&good_assign, &TypeContraint::Any),
-            Some(Type::BasicType(BasicType::Int))
-        );
-        assert_eq!(checker.check_expr(&bad_assign, &TypeContraint::Any), None);
+            Ok(Type::BasicType(BasicType::Int))
+        ));
+        assert!(matches!(checker.check_expr(&bad_assign, &TypeContraint::Any), Err(_)));
     }
 }

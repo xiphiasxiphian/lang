@@ -6,7 +6,7 @@ use nom::branch::alt;
 use nom::character::char;
 use nom::character::complete::{anychar, i32, multispace0};
 use nom::combinator::{cut, fail, opt, value};
-use nom::multi::{many0, separated_list0};
+use nom::multi::{many0, separated_list0, separated_list1};
 use nom::sequence::{delimited, preceded, terminated};
 use nom_supreme::parser_ext::ParserExt;
 use nom_supreme::tag::complete::tag;
@@ -69,6 +69,7 @@ pub enum Expr
 {
     Literal(Literal),
     Ident(String),
+    Array(Vec<Expr>),
     Call(String, Vec<Expr>),
     UnaryOp(UnaryOpMode, _Expr),
     BinaryOp(BinOpMode, _Expr, _Expr),
@@ -85,6 +86,17 @@ fn parse_literal(input: Span) -> ParseResult<Expr>
         span_parse_string.map(|s| Literal::String(s)),
     ))
     .map(|l| Expr::Literal(l))
+    .parse(input)
+}
+
+fn parse_array(input: Span) -> ParseResult<Expr>
+{
+    ws(
+        delimited(char('['),
+        ws(separated_list0(ws(char(',')), parse_expr)),
+        char(']')
+    ))
+    .map(|xs| Expr::Array(xs))
     .parse(input)
 }
 
@@ -141,6 +153,7 @@ pub fn parse_expr(input: Span) -> ParseResult<Expr>
             parse_call,
             parse_sub_expr,
             parse_block,
+            parse_array,
             parse_stmt.map(|x| Expr::Stmt(x)),
             parse_ident.map(|x| Expr::Ident(x)),
         ))),

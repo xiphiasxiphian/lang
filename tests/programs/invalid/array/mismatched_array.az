@@ -1,0 +1,4 @@
+fun main()
+{
+    let a: [int] = [1, false, 'c', 4];
+}
