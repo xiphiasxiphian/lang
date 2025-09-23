@@ -9,13 +9,9 @@ use nom::{
 use nom_supreme::tag::complete::tag;
 
 use crate::frontend::{
-    Ident,
     parsers::{
-        ParseResult, Span,
-        common::{Keyword, parse_ident, ws},
-        expr::{Expr, parse_block, parse_expr},
-        types::{Type, parse_type},
-    },
+        common::{parse_ident, ws, Keyword}, expr::{parse_block, parse_expr, Expr}, lvalue::{parse_lvalue, LValue}, types::{parse_type, Type}, ParseResult, Span
+    }, Ident
 };
 
 type _Expr = Box<Expr>;
@@ -32,7 +28,7 @@ pub enum Stmt
     },
     Assign
     {
-        id: Ident, rvalue: _Expr
+        lv: LValue, rvalue: _Expr
     },
     If
     {
@@ -54,7 +50,7 @@ fn parse_declare(input: Span) -> ParseResult<Stmt>
         preceded(ws(char('=')), parse_expr),
     )
         .map(|(id, ty, ex)| Stmt::Declare {
-            id: id.into(),
+            id: id,
             ty,
             rvalue: Box::new(ex),
         })
@@ -63,9 +59,9 @@ fn parse_declare(input: Span) -> ParseResult<Stmt>
 
 fn parse_assign(input: Span) -> ParseResult<Stmt>
 {
-    separated_pair(parse_ident, ws(char('=')), parse_expr)
-        .map(|(id, ex)| Stmt::Assign {
-            id: id,
+    separated_pair(parse_lvalue, ws(char('=')), parse_expr)
+        .map(|(lv, ex)| Stmt::Assign {
+            lv: lv,
             rvalue: Box::new(ex),
         })
         .parse(input)
@@ -131,7 +127,7 @@ mod stmt_tests
         assert_eq!(
             parse_stmt(Span::new("a = 45")).unwrap().1,
             Stmt::Assign {
-                id: "a".into(),
+                lv: LValue::Ident("a".into()),
                 rvalue: Box::new(Expr::Literal(Literal::Int(45)))
             }
         );

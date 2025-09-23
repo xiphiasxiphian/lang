@@ -11,7 +11,7 @@ use nom::Err;
 use crate::{common::ScopeMethods, frontend::{
     errors::CompileError,
     parsers::{
-        expr::{BinOpMode, Expr, Literal, UnaryOpMode}, func::Func, stmt::Stmt, types::{BasicType, Type}, Prog
+        expr::{BinOpMode, Expr, Literal, UnaryOpMode}, func::Func, lvalue::LValue, stmt::Stmt, types::{BasicType, Type}, Prog
     },
     semantic::symbol::{FunctionTypeInfo, SymbolTable, UniqueId}, Errors,
 }};
@@ -79,6 +79,7 @@ pub enum TypeContraint<'a>
 {
     Any,
     Is(Type),
+    IsIndexable,
     IsComparibleTo(Type),
     Or(&'a TypeContraint<'a>, &'a TypeContraint<'a>),
     And(&'a TypeContraint<'a>, &'a TypeContraint<'a>),
@@ -137,6 +138,7 @@ impl Type
             (_, TypeContraint::Any) => true,
             (t, TypeContraint::Or(c1, c2)) => t.satisfies(c1) || t.satisfies(c2),
             (t, TypeContraint::And(c1, c2)) => t.satisfies(c1) && t.satisfies(c2),
+            (t, TypeContraint::IsIndexable) => t.get_indexed_type().is_some(),
             (Type::Void, TypeContraint::Is(Type::Void)) => true,
             (Type::Void, _) => false,
             (Type::BasicType(basic), constr) => BASIC_TYPE_CONSTRAINTS[basic.clone()].contains(constr),
@@ -148,6 +150,15 @@ impl Type
     fn satisfies_then(self, c: &TypeContraint) -> Option<Self>
     {
         self.satisfies(c).then_some(self)
+    }
+
+    fn get_indexed_type(&self) -> Option<Type>
+    {
+        match self
+        {
+            Type::Array(t) => Some(t.as_ref().clone()),
+            _ => None,
+        }
     }
 }
 
@@ -191,16 +202,7 @@ impl<'a> TypeChecker<'a>
         {
             Expr::Literal(lit) => self.check_literal(lit, c),
             Expr::Array(exs) => self.check_array(exs, c),
-            Expr::Ident(id) =>
-            {
-                let ty = self
-                    .symbols
-                    .get_global(id)
-                    .cloned()
-                    .expect("Failed to get expected global while type checking");
-
-                self.check_type(ty, c)
-            }
+            Expr::LValue(lv) => self.check_lvalue(lv, c),
             Expr::Call(id, ps) =>
             {
                 let info = self.get_func_info(id);
@@ -260,6 +262,28 @@ impl<'a> TypeChecker<'a>
         )
     }
 
+    fn check_lvalue(&mut self, lvalue: &LValue, c: &TypeContraint) -> CheckResult
+    {
+        match lvalue
+        {
+            LValue::Ident(id) => {
+                let ty = self
+                    .symbols
+                    .get_global(id)
+                    .cloned()
+                    .expect("Failed to get expected global while type checking");
+
+                self.check_type(ty, c)
+            }
+            LValue::ArrayElem(lv, ex) => {
+                let lv_typed = self.check_lvalue(lv, &TypeContraint::IsIndexable)?;
+                _ = self.check_expr(ex, &TypeContraint::Is(Type::BasicType(BasicType::Int)))?;
+
+                self.check_type(lv_typed.get_indexed_type().expect("Type wasnt indexable, which should have been filtered"), c)
+            }
+        }
+    }
+
     fn check_array(&mut self, exprs: &Vec<Expr>, c: &TypeContraint) -> CheckResult
     {
         if exprs.is_empty() { Err(TypeCheckError::Unknown(Type::Array(Box::new(Type::Void)))).resolve(c) }
@@ -291,15 +315,28 @@ impl<'a> TypeChecker<'a>
 
                 cond_typed.and(body_typed)
             }
-            Stmt::Assign { id, rvalue } => self.with_symbol(id, |checker, x| {
-                checker.check_expr(
-                    rvalue.as_ref(),
-                    &(&(x
-                        .map(|t| TypeContraint::Is(t))
-                        .unwrap_or(TypeContraint::Any))
-                        & c),
-                )
-            }),
+            Stmt::Assign { lv, rvalue } => {
+                match lv
+                {
+                    LValue::Ident(uid) => {
+                        self.with_symbol(uid, |checker, x| {
+                            checker.check_expr(
+                                rvalue.as_ref(),
+                                &(&(x
+                                    .map(|t| TypeContraint::Is(t))
+                                    .unwrap_or(TypeContraint::Any))
+                                    & c),
+                            )
+                        })
+                    },
+                    a @ LValue::ArrayElem(_, ex) => {
+                        _ = self.check_expr(ex, &TypeContraint::Is(Type::BasicType(BasicType::Int)));
+                        let lv_typed = self.check_lvalue(a, &TypeContraint::Any)?;
+
+                        self.check_expr(rvalue, &TypeContraint::Is(lv_typed))
+                    }
+                }
+            },
             Stmt::While { cond, then } =>
             {
                 let cond_typed =

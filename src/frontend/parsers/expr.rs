@@ -13,6 +13,7 @@ use nom_supreme::tag::complete::tag;
 
 use crate::frontend::parsers::common::string::span_parse_string;
 use crate::frontend::parsers::common::{parse_ident, ws};
+use crate::frontend::parsers::lvalue::{parse_lvalue, LValue};
 use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
 use crate::frontend::parsers::{ParseResult, Span};
 use nom_language::precedence::{Assoc, Operation, binary_op, precedence, unary_op};
@@ -68,7 +69,7 @@ type _Expr = Box<Expr>;
 pub enum Expr
 {
     Literal(Literal),
-    Ident(String),
+    LValue(LValue),
     Array(Vec<Expr>),
     Call(String, Vec<Expr>),
     UnaryOp(UnaryOpMode, _Expr),
@@ -140,6 +141,7 @@ pub fn parse_block(input: Span) -> ParseResult<Expr>
 
 pub fn parse_expr(input: Span) -> ParseResult<Expr>
 {
+    println!("parse expr");
     precedence(
         alt(UNARY_OP_SYMS
             .map(|k, (p, v)| unary_op(p, value(k, tag(v))))
@@ -155,7 +157,7 @@ pub fn parse_expr(input: Span) -> ParseResult<Expr>
             parse_block,
             parse_array,
             parse_stmt.map(|x| Expr::Stmt(x)),
-            parse_ident.map(|x| Expr::Ident(x)),
+            parse_lvalue.map(|x| Expr::LValue(x)),
         ))),
         |op: Operation<UnaryOpMode, UnaryOpMode, BinOpMode, Expr>| {
             use Operation::*;

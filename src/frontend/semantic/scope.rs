@@ -5,10 +5,7 @@ use itertools::Itertools;
 use crate::{
     common::ScopeMethods,
     frontend::{
-        ErrorBuffer, Ident,
-        errors::CompileError,
-        parsers::{Prog, expr::Expr, func::Func, stmt::Stmt, types::Type},
-        semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId},
+        errors::CompileError, parsers::{expr::Expr, func::Func, lvalue::LValue, stmt::Stmt, types::Type, Prog}, semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId}, ErrorBuffer, Ident
     },
 };
 
@@ -193,7 +190,7 @@ impl Scopes
                 let (x, y) = self.check_call(id, params);
                 Expr::Call(x, y)
             }
-            Expr::Ident(id) => Expr::Ident(self.check_ident(id)),
+            Expr::LValue(lv) => Expr::LValue(self.check_lvalue(lv)),
             Expr::UnaryOp(mode, e) => Expr::UnaryOp(mode.clone(), Box::new(self.check_expr(e))),
             Expr::BinaryOp(mode, e1, e2) => Expr::BinaryOp(
                 mode.clone(),
@@ -213,9 +210,13 @@ impl Scopes
         (uid, params.iter().map(|x| self.check_expr(x)).collect())
     }
 
-    fn check_ident(&mut self, ident: &Ident) -> Ident
+    fn check_lvalue(&mut self, lvalue: &LValue) -> LValue
     {
-        self.get_var(ident)
+        match lvalue
+        {
+            LValue::Ident(id) => LValue::Ident(self.get_var(id)),
+            LValue::ArrayElem(id, e) => LValue::ArrayElem(Box::new(self.check_lvalue(id)), Box::new(self.check_expr(e)))
+        }
     }
 
     fn check_stmt(&mut self, stmt: &Stmt) -> Stmt
@@ -239,12 +240,12 @@ impl Scopes
                 let uid = self.new_var_symbol(var_type.cloned(), id.clone());
 
                 Stmt::Assign {
-                    id: uid,
+                    lv: LValue::Ident(uid),
                     rvalue: Box::new(ex),
                 }
             }
-            Stmt::Assign { id, rvalue } => Stmt::Assign {
-                id: self.check_ident(id),
+            Stmt::Assign { lv, rvalue } => Stmt::Assign {
+                lv: self.check_lvalue(lv),
                 rvalue: Box::new(self.check_expr(rvalue)),
             },
             Stmt::While { cond, then } => Stmt::While {
