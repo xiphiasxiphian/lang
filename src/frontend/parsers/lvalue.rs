@@ -12,7 +12,6 @@ pub enum LValue
 
 pub fn parse_lvalue(input: Span) -> ParseResult<LValue>
 {
-    println!("parse lvalue");
     (
         parse_ident,
         many0(

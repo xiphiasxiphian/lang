@@ -141,7 +141,6 @@ pub fn parse_block(input: Span) -> ParseResult<Expr>
 
 pub fn parse_expr(input: Span) -> ParseResult<Expr>
 {
-    println!("parse expr");
     precedence(
         alt(UNARY_OP_SYMS
             .map(|k, (p, v)| unary_op(p, value(k, tag(v))))
