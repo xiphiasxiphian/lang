@@ -1,0 +1,5 @@
+fun main()
+{
+    let a: [char] = ['h', 'e', 'l', 'l', 'o'];
+    a[0] = 'm';
+}
