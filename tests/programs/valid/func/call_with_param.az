@@ -1,0 +1,6 @@
+fun foo(a: char) -> char { a }
+
+fun main()
+{
+    let c: char = foo('a');
+}

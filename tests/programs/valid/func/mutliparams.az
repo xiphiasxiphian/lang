@@ -1,0 +1,6 @@
+fun foo(a: string, c: char) -> int { 42 }
+
+fun main()
+{
+    foo("Hello", 'b');
+}

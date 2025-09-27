@@ -3,6 +3,7 @@ use crate::config::{Config, ExitStatus};
 mod common;
 mod config;
 mod frontend;
+mod optimise;
 
 fn main() -> ExitStatus
 {

@@ -211,6 +211,7 @@ impl<'a> TypeChecker<'a>
                 if info.params.len() != ps.len()
                 {
                     // TODO: Report Error
+                    self.errors.push(CompileError::blank_error());
                 }
 
                 for (p, ty) in ps.iter().zip(info.params)

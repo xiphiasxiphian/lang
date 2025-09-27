@@ -1,0 +1,6 @@
+fun foo(a: int) -> int { a * a }
+
+fun main()
+{
+    let a: int = foo("lala");
+}
