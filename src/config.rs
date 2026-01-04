@@ -1,13 +1,14 @@
 use std::{
-    env::{self, Args}, fmt::Debug, process::{ExitCode, Termination}
+    env::{self, Args}, fmt::Debug, path::{Path, PathBuf}, process::{ExitCode, Termination}
 };
 
-use crate::{common::ScopeMethods, frontend::frontend};
+use crate::{backend::backend, common::ScopeMethods, frontend::frontend};
 
 pub struct Config
 {
     filename: String, // Required
     error_code: ExitCode, // Default
+    output: Option<String>, // Default
 }
 
 impl Default for Config
@@ -15,7 +16,8 @@ impl Default for Config
     fn default() -> Self {
         Self {
             filename: Default::default(),
-            error_code: ExitCode::FAILURE
+            error_code: ExitCode::FAILURE,
+            output: None,
         }
     }
 }
@@ -153,6 +155,14 @@ impl Config
     {
         let prog = frontend(&self.read_file().map_err(|x| Status::Config(x))?)
             .map_err(|es| Status::Compile(es.into_iter().map(|x| x.format()).collect()))?;
+
+        let bytes = backend(prog).map_err(|_| Status::Compile(vec![]))?;
+        let output_path = self.output
+            .as_ref()
+            .map(|x| Path::new(x).to_owned())
+            .unwrap_or_else(|| Path::new(&self.filename).to_path_buf().also_mut(|y| { y.set_extension(".azc"); }));
+
+        std::fs::write(output_path, bytes).map_err(|_| Status::Config(ConfigError::IoError))?;
 
         Ok(())
     }

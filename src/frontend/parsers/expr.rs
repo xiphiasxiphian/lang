@@ -6,7 +6,7 @@ use nom::branch::alt;
 use nom::character::char;
 use nom::character::complete::{anychar, i32, multispace0};
 use nom::combinator::{cut, fail, opt, value};
-use nom::multi::{many0, separated_list0, separated_list1};
+use nom::multi::{many0, separated_list0};
 use nom::sequence::{delimited, preceded, terminated};
 use nom_supreme::parser_ext::ParserExt;
 use nom_supreme::tag::complete::tag;
@@ -18,14 +18,14 @@ use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
 use crate::frontend::parsers::{ParseResult, Span};
 use nom_language::precedence::{Assoc, Operation, binary_op, precedence, unary_op};
 
-#[derive(Clone, Debug, PartialEq, Eq, Enum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Enum)]
 pub enum UnaryOpMode
 {
     Neg,
     Not,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Enum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum BinOpMode
 {
     Add,

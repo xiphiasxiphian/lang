@@ -19,7 +19,7 @@ pub enum Type
     Array(Box<Type>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Enum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum BasicType
 {
     Int,
