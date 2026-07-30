@@ -6,7 +6,6 @@ use std::{
 
 use enum_map::{EnumMap, enum_map};
 use itertools::Itertools;
-use nom::Err;
 
 use crate::{
     common::ScopeMethods,

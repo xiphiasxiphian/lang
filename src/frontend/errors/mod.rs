@@ -15,7 +15,7 @@ use crate::{
 
 pub mod builder;
 
-type ErrorVariant = BaseErrorKind<&'static str, Box<(dyn std::error::Error + Send + Sync + 'static)>>;
+type ErrorVariant = BaseErrorKind<&'static str, Box<dyn std::error::Error + Send + Sync + 'static >>;
 
 #[derive(Clone, Debug)]
 pub struct CompileError
@@ -82,7 +82,7 @@ impl CompileError
             _ => unreachable!(),
         };
 
-        let summary = format!("Unexpected type {found}");
+        let _summary = format!("Unexpected type {found}");
         let reason = format!("Found {found} here, {expectation}");
 
         let raw_line: String = str::from_utf8(from.get_line_beginning())
@@ -91,7 +91,7 @@ impl CompileError
         let col = from.get_utf8_column();
         let range = from.fragment().len().scope(|x| (col - 1)..(col + x - 1));
 
-        let line = SourceLine::new(raw_line, from.location_line() as usize).also_mut(|x| {
+        let _line = SourceLine::new(raw_line, from.location_line() as usize).also_mut(|x| {
             x.add_attachment(LineAttachment::Highlight('^', range, Some(reason)));
         });
     }
@@ -189,7 +189,7 @@ impl<'a> From<ErrorTree<Span<'a>>> for CompileError
         match value
         {
             ErrorTree::Base { location, kind } => Self::tree_base(location, kind),
-            ErrorTree::Stack { base, contexts } => Self::from(*base),
+            ErrorTree::Stack { base, contexts: _ } => Self::from(*base),
             ErrorTree::Alt(bs) => Self::blank_error().also(|_| println!("Alt Error {:?}", bs)),
         }
     }

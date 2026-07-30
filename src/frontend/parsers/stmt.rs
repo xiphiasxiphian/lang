@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     character::complete::char,
     combinator::opt,
-    sequence::{delimited, preceded, separated_pair},
+    sequence::{preceded, separated_pair},
 };
 use nom_supreme::tag::complete::tag;
 

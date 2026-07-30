@@ -112,7 +112,7 @@ impl Scopes
 
     fn can_define_var(&mut self, name: &Ident)
     {
-        if let Some(x) = self.local.get(name)
+        if let Some(_x) = self.local.get(name)
         {
             // Define Error Here
             /* TEMPORARY */
@@ -165,7 +165,7 @@ impl Scopes
                 .symbols
                 .borrow_mut()
                 .insert_func(func_uid.clone(), Some(type_info))
-                .inspect(|x| {
+                .inspect(|_x| {
                     // TODO: Temporary Error
                     scope.errors.borrow_mut().push(CompileError::blank_error());
                 });

@@ -1,11 +1,10 @@
 use std::{
-    env::{self, Args},
+    env::{self},
     fmt::Debug,
-    path::{Path, PathBuf},
     process::{ExitCode, Termination},
 };
 
-use crate::{common::ScopeMethods, frontend::frontend};
+use crate::frontend::frontend;
 
 pub struct Config
 {
@@ -157,7 +156,7 @@ impl Config
 
     fn compile_helper(&self) -> Result<(), Status>
     {
-        let prog = frontend(&self.read_file().map_err(|x| Status::Config(x))?)
+        let _prog = frontend(&self.read_file().map_err(|x| Status::Config(x))?)
             .map_err(|es| Status::Compile(es.into_iter().map(|x| x.format()).collect()))?;
 
         // let bytes = backend(prog).map_err(|_| Status::Compile(vec![]))?;

@@ -45,7 +45,7 @@ impl SymbolTable
         }
         else
         {
-            Err(result.undefined.iter().map(|x| todo!()).collect())
+            Err(result.undefined.iter().map(|_x| todo!()).collect())
         }
     }
 
