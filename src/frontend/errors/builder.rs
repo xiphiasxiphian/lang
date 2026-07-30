@@ -1,6 +1,7 @@
-use std::ops::Range;
-
-use std::iter::{once, repeat_n};
+use std::{
+    iter::{once, repeat_n},
+    ops::Range,
+};
 
 use itertools::Itertools;
 
@@ -16,10 +17,7 @@ pub enum LineAttachment
 pub struct SourceLine(String, usize, Vec<Vec<LineAttachment>>);
 impl SourceLine
 {
-    pub fn new(s: String, n: usize) -> Self
-    {
-        Self(s, n, vec![])
-    }
+    pub fn new(s: String, n: usize) -> Self { Self(s, n, vec![]) }
 
     pub fn add_attachment(&mut self, attachment: LineAttachment)
     {
@@ -106,8 +104,7 @@ impl ErrorBuilder
         let header = format!(
             "[{}] {}\n{}",
             self.error_type.unwrap_or_else(|| "Compile Error".into()),
-            self.summary
-                .unwrap_or_else(|| "Error in compilation".into()),
+            self.summary.unwrap_or_else(|| "Error in compilation".into()),
             self.location
                 .map(|x| format!("   at {}:{}:{}\n", x.0, x.1, x.2))
                 .unwrap_or_else(|| "".into())
@@ -145,10 +142,7 @@ impl ErrorBuilder
         {
             match group.first()
             {
-                Some(LineAttachment::Highlight(..)) =>
-                {
-                    Self::parse_highlights(&mut lines, group, max)
-                }
+                Some(LineAttachment::Highlight(..)) => Self::parse_highlights(&mut lines, group, max),
                 _ => unreachable!(),
             }
         }
@@ -176,10 +170,7 @@ impl ErrorBuilder
         let mut buffer: Vec<Line> = repeat_n(Line::new(None, max), depth).collect();
         for (i, (chr, range, reason)) in ordered.iter().enumerate()
         {
-            buffer[0].insert(
-                range.start,
-                repeat_n(chr, range.end - range.start).collect::<String>(),
-            );
+            buffer[0].insert(range.start, repeat_n(chr, range.end - range.start).collect::<String>());
             if let Some(r) = reason
                 && i < depth - 1
             {
@@ -193,10 +184,7 @@ impl ErrorBuilder
             }
             else
             {
-                buffer[0].insert(
-                    range.end + 1,
-                    reason.as_ref().cloned().unwrap_or_else(|| "".into()),
-                );
+                buffer[0].insert(range.end + 1, reason.as_ref().cloned().unwrap_or_else(|| "".into()));
             }
         }
 
@@ -265,21 +253,9 @@ mod builder_tests
     fn test()
     {
         let line = SourceLine("let tmp = 4 + 5;".into(), 4, vec![]).also_mut(|l| {
-            l.add_attachment(LineAttachment::Highlight(
-                '^',
-                0..3,
-                Some("Its really bad".into()),
-            ));
-            l.add_attachment(LineAttachment::Highlight(
-                '-',
-                4..7,
-                Some("Its just awful".into()),
-            ));
-            l.add_attachment(LineAttachment::Highlight(
-                '-',
-                10..15,
-                Some("How Terrible!".into()),
-            ));
+            l.add_attachment(LineAttachment::Highlight('^', 0..3, Some("Its really bad".into())));
+            l.add_attachment(LineAttachment::Highlight('-', 4..7, Some("Its just awful".into())));
+            l.add_attachment(LineAttachment::Highlight('-', 10..15, Some("How Terrible!".into())));
         });
 
         let second_line = SourceLine("for i in 0..10 { println(i) }".into(), 10, vec![]);

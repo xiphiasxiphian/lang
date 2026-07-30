@@ -5,7 +5,10 @@ use itertools::Itertools;
 use crate::{
     common::ScopeMethods,
     frontend::{
-        errors::CompileError, parsers::{expr::Expr, func::Func, lvalue::LValue, stmt::Stmt, types::Type, Prog}, semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId}, ErrorBuffer, Ident
+        ErrorBuffer, Ident,
+        errors::CompileError,
+        parsers::{Prog, expr::Expr, func::Func, lvalue::LValue, stmt::Stmt, types::Type},
+        semantic::symbol::{FunctionTypeInfo, SymbolTableBuffer, UniqueId},
     },
 };
 
@@ -48,10 +51,7 @@ impl Scopes
 
     fn from_parent(parent: &Self) -> Self
     {
-        let new_parent = parent
-            .parent
-            .clone()
-            .also_mut(|x| x.extend(parent.local.clone()));
+        let new_parent = parent.parent.clone().also_mut(|x| x.extend(parent.local.clone()));
 
         Scopes {
             errors: parent.errors.clone(),
@@ -215,7 +215,10 @@ impl Scopes
         match lvalue
         {
             LValue::Ident(id) => LValue::Ident(self.get_var(id)),
-            LValue::ArrayElem(id, e) => LValue::ArrayElem(Box::new(self.check_lvalue(id)), Box::new(self.check_expr(e)))
+            LValue::ArrayElem(id, e) =>
+            {
+                LValue::ArrayElem(Box::new(self.check_lvalue(id)), Box::new(self.check_expr(e)))
+            }
         }
     }
 

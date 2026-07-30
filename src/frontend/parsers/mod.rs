@@ -1,6 +1,6 @@
 use nom::{Finish, IResult, Parser, multi::many1};
 use nom_locate::LocatedSpan;
-use nom_supreme::{error::ErrorTree, ParserExt};
+use nom_supreme::{ParserExt, error::ErrorTree};
 
 use crate::frontend::{
     errors::CompileError,
@@ -9,9 +9,9 @@ use crate::frontend::{
 
 pub mod expr;
 pub mod func;
+pub mod lvalue;
 pub mod stmt;
 pub mod types;
-pub mod lvalue;
 
 mod common;
 
@@ -26,7 +26,8 @@ pub struct Prog
 pub fn parse_prog(input: &str) -> Result<Prog, Vec<CompileError>>
 {
     let span = Span::new(input);
-    many1(parse_func).complete()
+    many1(parse_func)
+        .complete()
         .parse_complete(span)
         .finish()
         .map(|(_, x)| Prog { funcs: x })

@@ -1,22 +1,26 @@
 use std::sync::LazyLock;
 
 use enum_map::{Enum, EnumMap, enum_map};
-use nom::Parser;
-use nom::branch::alt;
-use nom::character::char;
-use nom::character::complete::{anychar, i32, multispace0};
-use nom::combinator::{cut, fail, opt, value};
-use nom::multi::{many0, separated_list0};
-use nom::sequence::{delimited, preceded, terminated};
-use nom_supreme::parser_ext::ParserExt;
-use nom_supreme::tag::complete::tag;
-
-use crate::frontend::parsers::common::string::span_parse_string;
-use crate::frontend::parsers::common::{parse_ident, ws};
-use crate::frontend::parsers::lvalue::{parse_lvalue, LValue};
-use crate::frontend::parsers::stmt::{Stmt, parse_stmt};
-use crate::frontend::parsers::{ParseResult, Span};
+use nom::{
+    Parser,
+    branch::alt,
+    character::{
+        char,
+        complete::{anychar, i32, multispace0},
+    },
+    combinator::{cut, fail, opt, value},
+    multi::{many0, separated_list0},
+    sequence::{delimited, preceded, terminated},
+};
 use nom_language::precedence::{Assoc, Operation, binary_op, precedence, unary_op};
+use nom_supreme::{parser_ext::ParserExt, tag::complete::tag};
+
+use crate::frontend::parsers::{
+    ParseResult, Span,
+    common::{parse_ident, string::span_parse_string, ws},
+    lvalue::{LValue, parse_lvalue},
+    stmt::{Stmt, parse_stmt},
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Enum)]
 pub enum UnaryOpMode
@@ -43,17 +47,16 @@ static UNARY_OP_SYMS: LazyLock<EnumMap<UnaryOpMode, (usize, &'static str)>> = La
     }
 });
 
-static BIN_OP_SYMS: LazyLock<EnumMap<BinOpMode, (usize, Assoc, &'static str)>> =
-    LazyLock::new(|| {
-        use BinOpMode::*;
+static BIN_OP_SYMS: LazyLock<EnumMap<BinOpMode, (usize, Assoc, &'static str)>> = LazyLock::new(|| {
+    use BinOpMode::*;
 
-        enum_map! {
-            Add => (3, Assoc::Left, "+"),
-            Sub => (3, Assoc::Left, "-"),
-            Mul => (2, Assoc::Left, "*"),
-            Div => (2, Assoc::Left, "/")
-        }
-    });
+    enum_map! {
+        Add => (3, Assoc::Left, "+"),
+        Sub => (3, Assoc::Left, "-"),
+        Mul => (2, Assoc::Left, "*"),
+        Div => (2, Assoc::Left, "/")
+    }
+});
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Literal
@@ -92,10 +95,10 @@ fn parse_literal(input: Span) -> ParseResult<Expr>
 
 fn parse_array(input: Span) -> ParseResult<Expr>
 {
-    ws(
-        delimited(char('['),
+    ws(delimited(
+        char('['),
         ws(separated_list0(ws(char(',')), parse_expr)),
-        char(']')
+        char(']'),
     ))
     .map(|xs| Expr::Array(xs))
     .parse(input)
@@ -129,10 +132,7 @@ pub fn parse_block(input: Span) -> ParseResult<Expr>
 {
     ws(delimited(
         char('{'),
-        ws((
-            ws(many0(terminated(parse_expr, ws(char(';'))))),
-            ws(opt(parse_expr)),
-        )),
+        ws((ws(many0(terminated(parse_expr, ws(char(';'))))), ws(opt(parse_expr)))),
         char('}'),
     ))
     .map(|(exs, ret)| Expr::Block(exs, ret.map(|x| Box::new(x))))
@@ -178,36 +178,22 @@ mod expr_test
     use super::*;
 
     #[test]
-    fn parse_empty_block()
-    {
-        assert_eq!(
-            parse_block("{  \n   }".into()).unwrap().1,
-            Expr::Block(vec!(), None)
-        )
-    }
+    fn parse_empty_block() { assert_eq!(parse_block("{  \n   }".into()).unwrap().1, Expr::Block(vec!(), None)) }
 
     #[test]
     fn literal_basic_test()
     {
         // Integers
-        assert_eq!(
-            parse_literal("32".into()).unwrap().1,
-            Expr::Literal(Literal::Int(32))
-        );
+        assert_eq!(parse_literal("32".into()).unwrap().1, Expr::Literal(Literal::Int(32)));
 
-        assert_eq!(
-            parse_literal("-32".into()).unwrap().1,
-            Expr::Literal(Literal::Int(-32))
-        );
+        assert_eq!(parse_literal("-32".into()).unwrap().1, Expr::Literal(Literal::Int(-32)));
 
         // Strings
         assert_eq!(
             parse_literal(Span::new("\"This is some really interesting text\""))
                 .unwrap()
                 .1,
-            Expr::Literal(Literal::String(String::from(
-                "This is some really interesting text"
-            )))
+            Expr::Literal(Literal::String(String::from("This is some really interesting text")))
         );
 
         assert!(parse_literal(Span::new("This is some text")).is_err())

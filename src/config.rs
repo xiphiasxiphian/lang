@@ -1,19 +1,23 @@
 use std::{
-    env::{self, Args}, fmt::Debug, path::{Path, PathBuf}, process::{ExitCode, Termination}
+    env::{self, Args},
+    fmt::Debug,
+    path::{Path, PathBuf},
+    process::{ExitCode, Termination},
 };
 
-use crate::{backend::backend, common::ScopeMethods, frontend::frontend};
+use crate::{common::ScopeMethods, frontend::frontend};
 
 pub struct Config
 {
-    filename: String, // Required
-    error_code: ExitCode, // Default
+    filename: String,       // Required
+    error_code: ExitCode,   // Default
     output: Option<String>, // Default
 }
 
 impl Default for Config
 {
-    fn default() -> Self {
+    fn default() -> Self
+    {
         Self {
             filename: Default::default(),
             error_code: ExitCode::FAILURE,
@@ -59,16 +63,14 @@ impl ExitStatus
         {
             Status::Success => Self::SUCCESS,
             Status::Config(a) => a.into(),
-            a @ Status::Compile(_) => Self(compile_code, a)
+            a @ Status::Compile(_) => Self(compile_code, a),
         }
     }
 }
 
 impl From<ConfigError> for ExitStatus
 {
-    fn from(value: ConfigError) -> Self {
-        Self(Config::CONFIG_ERROR_CODE, Status::Config(value))
-    }
+    fn from(value: ConfigError) -> Self { Self(Config::CONFIG_ERROR_CODE, Status::Config(value)) }
 }
 
 enum Status
@@ -121,17 +123,20 @@ impl Config
         {
             match flag.as_str()
             {
-                a @ "--fail" => {
+                a @ "--fail" =>
+                {
                     let operand = args.next().ok_or(ConfigError::InvalidArgument(a.into()))?;
-                    config.error_code = operand.parse::<u8>()
+                    config.error_code = operand
+                        .parse::<u8>()
                         .map_err(|_| ConfigError::InvalidArgument(a.into()))?
                         .into();
                 }
-                file => {
+                file =>
+                {
                     // Cannot have more than one unnamed argument
                     if set_filename
                     {
-                        return Err(ConfigError::UnknownFlag(file.into()))
+                        return Err(ConfigError::UnknownFlag(file.into()));
                     }
                     else
                     {
@@ -141,7 +146,6 @@ impl Config
                 }
             }
         }
-
 
         set_filename.then_some(config).ok_or(ConfigError::NoFileProvided)
     }
@@ -156,13 +160,15 @@ impl Config
         let prog = frontend(&self.read_file().map_err(|x| Status::Config(x))?)
             .map_err(|es| Status::Compile(es.into_iter().map(|x| x.format()).collect()))?;
 
-        let bytes = backend(prog).map_err(|_| Status::Compile(vec![]))?;
-        let output_path = self.output
-            .as_ref()
-            .map(|x| Path::new(x).to_owned())
-            .unwrap_or_else(|| Path::new(&self.filename).to_path_buf().also_mut(|y| { y.set_extension(".azc"); }));
+        // let bytes = backend(prog).map_err(|_| Status::Compile(vec![]))?;
+        // let output_path = self.output
+        //     .as_ref()
+        //     .map(|x| Path::new(x).to_owned())
+        //     .unwrap_or_else(|| Path::new(&self.filename)
+        //         .to_path_buf()
+        //     );
 
-        std::fs::write(output_path, bytes).map_err(|_| Status::Config(ConfigError::IoError))?;
+        // std::fs::write(output_path, bytes).map_err(|_| Status::Config(ConfigError::IoError))?;
 
         Ok(())
     }

@@ -32,15 +32,9 @@ pub struct SymbolTable
 
 impl SymbolTable
 {
-    pub fn new() -> Self
-    {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
-    pub fn new_buffer() -> SymbolTableBuffer
-    {
-        Rc::new(RefCell::new(Self::new()))
-    }
+    pub fn new_buffer() -> SymbolTableBuffer { Rc::new(RefCell::new(Self::new())) }
 
     pub fn from_buffer(buffer: SymbolTableBuffer) -> Result<Self, Vec<CompileError>>
     {
@@ -55,8 +49,7 @@ impl SymbolTable
         }
     }
 
-    pub fn insert_func(&mut self, id: UniqueId, info: Option<FunctionTypeInfo>)
-    -> Option<UniqueId>
+    pub fn insert_func(&mut self, id: UniqueId, info: Option<FunctionTypeInfo>) -> Option<UniqueId>
     {
         match info
         {
@@ -76,10 +69,7 @@ impl SymbolTable
         }
     }
 
-    pub fn new_global_id(&self, id: Ident) -> UniqueId
-    {
-        format!("{id}{SPECIAL_CHAR}{}", self.globals.len())
-    }
+    pub fn new_global_id(&self, id: Ident) -> UniqueId { format!("{id}{SPECIAL_CHAR}{}", self.globals.len()) }
 
     pub fn insert_global(&mut self, id: UniqueId, ty: Type) -> Option<UniqueId>
     {
@@ -91,10 +81,7 @@ impl SymbolTable
         Some(id.clone()).filter(|_| self.untyped.insert(id.clone()))
     }
 
-    pub fn get_global(&mut self, id: &UniqueId) -> Option<&Type>
-    {
-        self.globals.get(id)
-    }
+    pub fn get_global(&mut self, id: &UniqueId) -> Option<&Type> { self.globals.get(id) }
 
     pub fn set_untyped(&mut self, id: UniqueId, ty: Type)
     {
@@ -104,8 +91,5 @@ impl SymbolTable
         }
     }
 
-    pub fn get_func_info(&self, id: &UniqueId) -> Option<&FunctionTypeInfo>
-    {
-        self.funcs.get(id)
-    }
+    pub fn get_func_info(&self, id: &UniqueId) -> Option<&FunctionTypeInfo> { self.funcs.get(id) }
 }

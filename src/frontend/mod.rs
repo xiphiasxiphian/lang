@@ -1,10 +1,10 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
-use crate::frontend::errors::CompileError;
-use crate::frontend::parsers::parse_prog;
-use crate::frontend::semantic::SemProg;
-use crate::frontend::semantic::semantic_check;
+use crate::frontend::{
+    errors::CompileError,
+    parsers::parse_prog,
+    semantic::{SemProg, semantic_check},
+};
 
 pub mod errors;
 pub mod parsers;

@@ -4,7 +4,6 @@ use nom::{
     multi::separated_list0,
     sequence::{delimited, preceded, separated_pair},
 };
-
 use nom_supreme::{ParserExt, tag::complete::tag};
 
 use crate::frontend::{
@@ -40,11 +39,7 @@ pub fn parse_func(input: Span) -> ParseResult<Func>
 {
     (
         preceded(ws(tag(Keyword::Func.into())), parse_ident),
-        delimited(
-            tag("("),
-            separated_list0(ws(tag(",")), parse_parameter),
-            tag(")"),
-        ),
+        delimited(tag("("), separated_list0(ws(tag(",")), parse_parameter), tag(")")),
         opt(preceded(ws(tag("->")), parse_type)),
         parse_block,
     )
@@ -67,9 +62,7 @@ mod tests
     fn basic_fun_header_test()
     {
         assert_eq!(
-            parse_func(Span::new("fun foo(a: int, b: int) -> int {}"))
-                .unwrap()
-                .1,
+            parse_func(Span::new("fun foo(a: int, b: int) -> int {}")).unwrap().1,
             Func {
                 name: "foo".into(),
                 parameters: vec![

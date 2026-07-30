@@ -5,13 +5,17 @@ use nom::{
     combinator::opt,
     sequence::{delimited, preceded, separated_pair},
 };
-
 use nom_supreme::tag::complete::tag;
 
 use crate::frontend::{
+    Ident,
     parsers::{
-        common::{parse_ident, ws, Keyword}, expr::{parse_block, parse_expr, Expr}, lvalue::{parse_lvalue, LValue}, types::{parse_type, Type}, ParseResult, Span
-    }, Ident
+        ParseResult, Span,
+        common::{Keyword, parse_ident, ws},
+        expr::{Expr, parse_block, parse_expr},
+        lvalue::{LValue, parse_lvalue},
+        types::{Type, parse_type},
+    },
 };
 
 type _Expr = Box<Expr>;
@@ -22,9 +26,7 @@ pub enum Stmt
 {
     Declare
     {
-        id: Ident,
-        ty: Option<Type>,
-        rvalue: _Expr,
+        id: Ident, ty: Option<Type>, rvalue: _Expr
     },
     Assign
     {
@@ -32,9 +34,7 @@ pub enum Stmt
     },
     If
     {
-        cond: _Expr,
-        tt: _Expr,
-        ff: Option<_Expr>,
+        cond: _Expr, tt: _Expr, ff: Option<_Expr>
     },
     While
     {
@@ -70,10 +70,7 @@ fn parse_assign(input: Span) -> ParseResult<Stmt>
 fn parse_if(input: Span) -> ParseResult<Stmt>
 {
     (
-        preceded(
-            ws(tag(Keyword::Cond.into())),
-            ws(parse_expr)
-        ),
+        preceded(ws(tag(Keyword::Cond.into())), ws(parse_expr)),
         parse_block,
         opt(preceded(ws(tag(Keyword::CondElse.into())), parse_block)),
     )
@@ -87,13 +84,7 @@ fn parse_if(input: Span) -> ParseResult<Stmt>
 
 fn parse_while(input: Span) -> ParseResult<Stmt>
 {
-    (
-        preceded(
-            ws(tag(Keyword::Loop.into())),
-            ws(parse_expr),
-        ),
-        parse_block,
-    )
+    (preceded(ws(tag(Keyword::Loop.into())), ws(parse_expr)), parse_block)
         .map(|(cond, then)| Stmt::While {
             cond: Box::new(cond),
             then: Box::new(then),
@@ -139,15 +130,10 @@ mod stmt_tests
     fn basic_if()
     {
         assert_eq!(
-            parse_if(Span::new("if (true) { 32 } else { 42 }"))
-                .unwrap()
-                .1,
+            parse_if(Span::new("if (true) { 32 } else { 42 }")).unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(true))),
-                tt: Box::new(Expr::Block(
-                    vec!(),
-                    Some(Box::new(Expr::Literal(Literal::Int(32))))
-                )),
+                tt: Box::new(Expr::Block(vec!(), Some(Box::new(Expr::Literal(Literal::Int(32)))))),
                 ff: Some(Box::new(Expr::Block(
                     vec!(),
                     Some(Box::new(Expr::Literal(Literal::Int(42))))
@@ -159,10 +145,7 @@ mod stmt_tests
             parse_if(Span::new("if (false) { 50 }")).unwrap().1,
             Stmt::If {
                 cond: Box::new(Expr::Literal(Literal::Bool(false))),
-                tt: Box::new(Expr::Block(
-                    vec!(),
-                    Some(Box::new(Expr::Literal(Literal::Int(50))))
-                )),
+                tt: Box::new(Expr::Block(vec!(), Some(Box::new(Expr::Literal(Literal::Int(50)))))),
                 ff: None
             }
         );

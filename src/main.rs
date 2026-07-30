@@ -4,7 +4,6 @@ mod common;
 mod config;
 
 mod frontend;
-mod backend;
 mod optimise;
 
 fn main() -> ExitStatus

@@ -15,8 +15,7 @@ use crate::{
 
 pub mod builder;
 
-type ErrorVariant =
-    BaseErrorKind<&'static str, Box<(dyn std::error::Error + Send + Sync + 'static)>>;
+type ErrorVariant = BaseErrorKind<&'static str, Box<(dyn std::error::Error + Send + Sync + 'static)>>;
 
 #[derive(Clone, Debug)]
 pub struct CompileError
@@ -26,10 +25,7 @@ pub struct CompileError
 
 impl CompileError
 {
-    pub fn format(self) -> String
-    {
-        self.builder.result()
-    }
+    pub fn format(self) -> String { self.builder.result() }
 
     // List of Error Type Generators
     pub fn blank_error() -> Self
@@ -171,10 +167,7 @@ impl CompileError
             .into_iter()
             .map(|x| match x
             {
-                ErrorTree::Base { location, kind } =>
-                {
-                    (location, Self::translate_error_kind(kind).unwrap())
-                }
+                ErrorTree::Base { location, kind } => (location, Self::translate_error_kind(kind).unwrap()),
                 _ => todo!(),
             })
             .collect();

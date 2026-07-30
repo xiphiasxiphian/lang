@@ -3,18 +3,21 @@ pub mod string;
 use std::str::FromStr;
 
 use enum_map::Enum;
-use nom::branch::alt;
-use nom::character::complete::{alpha1, alphanumeric1, multispace0};
-use nom::combinator::recognize;
-use nom::error::ParseError;
-use nom::multi::many0_count;
-use nom::sequence::{delimited, pair};
-use nom::{AsChar, Input, Parser};
+use nom::{
+    AsChar, Input, Parser,
+    branch::alt,
+    character::complete::{alpha1, alphanumeric1, multispace0},
+    combinator::recognize,
+    error::ParseError,
+    multi::many0_count,
+    sequence::{delimited, pair},
+};
 use nom_supreme::tag::complete::tag;
 
-use crate::frontend::Ident;
-use crate::frontend::parsers::types::BasicType;
-use crate::frontend::parsers::{ParseResult, Span};
+use crate::frontend::{
+    Ident,
+    parsers::{ParseResult, Span, types::BasicType},
+};
 
 #[derive(Enum, Clone, Debug)]
 pub enum Keyword

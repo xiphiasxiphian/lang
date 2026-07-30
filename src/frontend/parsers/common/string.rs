@@ -14,14 +14,16 @@
 //! - an escape followed by whitespace consumes all whitespace between the
 //!   escape and the next non-whitespace character
 
-use nom::branch::alt;
-use nom::bytes::streaming::{is_not, take_while_m_n};
-use nom::character::streaming::{char, multispace1};
-use nom::combinator::{map, map_opt, map_res, value, verify};
-use nom::error::{Error, ErrorKind, FromExternalError, ParseError};
-use nom::multi::fold;
-use nom::sequence::{delimited, preceded};
-use nom::{IResult, Input, Offset, Parser};
+use nom::{
+    IResult, Input, Offset, Parser,
+    branch::alt,
+    bytes::streaming::{is_not, take_while_m_n},
+    character::streaming::{char, multispace1},
+    combinator::{map, map_opt, map_res, value, verify},
+    error::{Error, ErrorKind, FromExternalError, ParseError},
+    multi::fold,
+    sequence::{delimited, preceded},
+};
 use nom_supreme::error::BaseErrorKind;
 
 use crate::frontend::parsers::{ParseResult, Span};
@@ -93,9 +95,7 @@ where
 
 /// Parse a backslash, followed by any amount of whitespace. This is used later
 /// to discard any escaped whitespace.
-fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, &'a str, E>
+fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E>
 {
     preceded(char('\\'), multispace1).parse(input)
 }
@@ -189,12 +189,10 @@ pub fn span_parse_string(input: Span) -> ParseResult<String>
         Err(_) =>
         {
             // TODO: Figure out something here
-            Err(nom::Err::Error(
-                nom_supreme::error::GenericErrorTree::Base {
-                    location: input,
-                    kind: BaseErrorKind::Kind(ErrorKind::Escaped),
-                },
-            ))
+            Err(nom::Err::Error(nom_supreme::error::GenericErrorTree::Base {
+                location: input,
+                kind: BaseErrorKind::Kind(ErrorKind::Escaped),
+            }))
         }
     }
 }
