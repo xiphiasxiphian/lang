@@ -1,6 +1,5 @@
-use std::sync::LazyLock;
+use std::array;
 
-use enum_map::{Enum, EnumMap, enum_map};
 use nom::{
     Parser,
     branch::alt,
@@ -14,22 +13,28 @@ use nom::{
 };
 use nom_language::precedence::{Assoc, Operation, binary_op, precedence, unary_op};
 use nom_supreme::{parser_ext::ParserExt, tag::complete::tag};
+use strum::{EnumCount, VariantArray};
 
 use crate::frontend::parsers::{
-    ParseResult, Span,
-    common::{parse_ident, string::span_parse_string, ws},
-    lvalue::{LValue, parse_lvalue},
-    stmt::{Stmt, parse_stmt},
+    ParseResult, Span, common::{parse_ident, string::span_parse_string, ws}, lvalue::{LValue, parse_lvalue}, stmt::{Stmt, parse_stmt}, types::BasicType,
 };
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Enum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumCount, VariantArray)]
 pub enum UnaryOpMode
 {
     Neg,
     Not,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Enum)]
+impl UnaryOpMode
+{
+    pub const SYMS: [(usize, &'static str); Self::COUNT] = [
+        (1, "-"), // Neg
+        (1, "!"), // Not
+    ];
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumCount, VariantArray)]
 pub enum BinOpMode
 {
     Add,
@@ -38,25 +43,15 @@ pub enum BinOpMode
     Div,
 }
 
-static UNARY_OP_SYMS: LazyLock<EnumMap<UnaryOpMode, (usize, &'static str)>> = LazyLock::new(|| {
-    use UnaryOpMode::*;
-
-    enum_map! {
-        Neg => (1, "-"),
-        Not => (1, "!"),
-    }
-});
-
-static BIN_OP_SYMS: LazyLock<EnumMap<BinOpMode, (usize, Assoc, &'static str)>> = LazyLock::new(|| {
-    use BinOpMode::*;
-
-    enum_map! {
-        Add => (3, Assoc::Left, "+"),
-        Sub => (3, Assoc::Left, "-"),
-        Mul => (2, Assoc::Left, "*"),
-        Div => (2, Assoc::Left, "/")
-    }
-});
+impl BinOpMode
+{
+    pub const SYMS: [(usize, Assoc, &'static str); Self::COUNT] = [
+        (3, Assoc::Left, "+"), // add
+        (3, Assoc::Left, "-"), // sub
+        (2, Assoc::Left, "*"), // mul
+        (2, Assoc::Left, "/"), // div
+    ];
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Literal
@@ -141,14 +136,19 @@ pub fn parse_block(input: Span) -> ParseResult<Expr>
 
 pub fn parse_expr(input: Span) -> ParseResult<Expr>
 {
+    const UNARY_COUNT: usize = UnaryOpMode::COUNT;
+    const BINARY_COUNT: usize = BinOpMode::COUNT;
+
     precedence(
-        alt(UNARY_OP_SYMS
-            .map(|k, (p, v)| unary_op(p, value(k, tag(v))))
-            .into_array()),
+        alt(array::from_fn::<_, UNARY_COUNT, _>(|i| {
+            let (k, (p, v)) = (UnaryOpMode::VARIANTS[i], UnaryOpMode::SYMS[i]);
+            unary_op(p, value(k, tag(v)))
+        })),
         fail(),
-        alt(BIN_OP_SYMS
-            .map(|k, (p, a, v)| binary_op(p, a, value(k, tag(v))))
-            .into_array()),
+        alt(array::from_fn::<_, BINARY_COUNT, _>(|i| {
+            let (k, (p, a, v)) = (BinOpMode::VARIANTS[i], BinOpMode::SYMS[i]);
+            binary_op(p, a, value(k, tag(v)))
+        })),
         ws(alt((
             parse_literal,
             parse_call,

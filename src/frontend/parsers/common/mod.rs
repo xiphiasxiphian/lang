@@ -1,8 +1,6 @@
 pub mod string;
 
 use std::str::FromStr;
-
-use enum_map::Enum;
 use nom::{
     AsChar, Input, Parser,
     branch::alt,
