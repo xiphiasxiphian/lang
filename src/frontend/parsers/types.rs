@@ -1,9 +1,8 @@
 use std::{
-    fmt::{Debug, Display},
-    sync::LazyLock,
+    array, fmt::{Debug, Display}, sync::LazyLock,
 };
 
-use strum::EnumCount;
+use strum::{EnumCount, VariantArray, VariantNames};
 use nom::{Parser, branch::alt, combinator::value, sequence::delimited};
 use nom_supreme::{ParserExt, tag::complete::tag};
 
@@ -17,7 +16,8 @@ pub enum Type
     Array(Box<Type>),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumCount)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumCount, VariantArray, VariantNames)]
+#[strum(serialize_all = "camelCase")]
 pub enum BasicType
 {
     Int,
@@ -28,7 +28,7 @@ pub enum BasicType
 
 impl Display for BasicType
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", Self::TYPE_STRINGS[*self as usize].1) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", Self::NAMES[*self as usize]) }
 }
 
 impl Display for Type
@@ -46,19 +46,16 @@ impl Display for Type
 
 impl BasicType
 {
-    pub const TYPE_STRINGS: [(Self, &'static str); Self::COUNT] = [
-        (BasicType::Int, "int"),
-        (BasicType::Bool, "bool"),
-        (BasicType::Char, "char"),
-        (BasicType::String, "string"),
-    ];
+    pub const NAMES: &'static [&'static str] = <Self as VariantNames>::VARIANTS;
+    pub const VALUES: &'static [Self] = <Self as VariantArray>::VARIANTS;
 
-    pub fn as_str(self) -> &'static str { Self::TYPE_STRINGS[self as usize].1 }
+    pub fn as_str(self) -> &'static str { Self::NAMES[self as usize] }
 }
 
 fn parse_basic_type(input: Span) -> ParseResult<Type>
 {
-    alt(BasicType::TYPE_STRINGS.map(|(ty, label)| value(ty, tag(label))))
+    const COUNT: usize = BasicType::COUNT;
+    alt(array::from_fn::<_, COUNT, _>(|i| value(BasicType::VALUES[i], tag(BasicType::NAMES[i]))))
         .context("Expected a basic type (int, bool, char or string)")
         .map(|ty| Type::BasicType(ty))
         .parse(input)
