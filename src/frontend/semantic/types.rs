@@ -1,11 +1,10 @@
 use std::{
-    collections::HashSet,
-    ops::{BitAnd, BitOr},
-    sync::LazyLock,
+    array, collections::HashSet, ops::{BitAnd, BitOr}, sync::LazyLock,
 };
 
 use enum_map::{EnumMap, enum_map};
 use itertools::Itertools;
+use strum::{EnumCount, VariantArray};
 
 use crate::{
     common::ScopeMethods,
@@ -113,28 +112,26 @@ impl<'a> BitOr for &'a TypeContraint<'a>
     fn bitor(self, rhs: Self) -> Self::Output { TypeContraint::Or(self, rhs) }
 }
 
-static BASIC_TYPE_CONSTRAINTS: LazyLock<EnumMap<BasicType, HashSet<TypeContraint>>> = LazyLock::new(|| {
-    use BasicType as B;
-    use TypeContraint as T;
+impl BasicType
+{
+    pub fn has_constraint(self, constraint: &TypeContraint) -> bool
+    {
+        use BasicType as B;
+        use TypeContraint as T;
 
-    enum_map! {
-        B::Int => HashSet::from([
-            T::IsComparibleTo(Type::BasicType(B::Char)),
-        ]),
-        B::Char => HashSet::from([
-            T::IsComparibleTo(Type::BasicType(B::Int))
-        ]),
-        B::Bool => HashSet::from([]),
-        B::String => HashSet::from([]),
+        match (self, constraint)
+        {
+            (b, T::Is(Type::BasicType(target)))
+            | (b, T::IsComparibleTo(Type::BasicType(target)))
+                if b == *target => true,
+
+            (B::Int, T::IsComparibleTo(Type::BasicType(B::Char))) => true,
+            (B::Char, T::IsComparibleTo(Type::BasicType(B::Int))) => true,
+
+            _ => false,
+        }
     }
-    .map(|k, mut v| {
-        v.extend([
-            T::Is(Type::BasicType(k.clone())),
-            T::IsComparibleTo(Type::BasicType(k.clone())),
-        ]);
-        v
-    })
-});
+}
 
 impl Type
 {
@@ -148,7 +145,7 @@ impl Type
             (t, TypeContraint::IsIndexable) => t.get_indexed_type().is_some(),
             (Type::Void, TypeContraint::Is(Type::Void)) => true,
             (Type::Void, _) => false,
-            (Type::BasicType(basic), constr) => BASIC_TYPE_CONSTRAINTS[basic.clone()].contains(constr),
+            (Type::BasicType(basic), constr) => basic.has_constraint(constr),
             (Type::Array(i1), TypeContraint::Is(Type::Array(i2))) => i1 == i2,
             (Type::Array(_), _) => false,
         }
