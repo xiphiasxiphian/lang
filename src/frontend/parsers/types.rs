@@ -3,7 +3,7 @@ use std::{
     sync::LazyLock,
 };
 
-use enum_map::{Enum, EnumMap, enum_map};
+use strum::EnumCount;
 use nom::{Parser, branch::alt, combinator::value, sequence::delimited};
 use nom_supreme::{ParserExt, tag::complete::tag};
 
@@ -17,7 +17,7 @@ pub enum Type
     Array(Box<Type>),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Enum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumCount)]
 pub enum BasicType
 {
     Int,
@@ -28,7 +28,7 @@ pub enum BasicType
 
 impl Display for BasicType
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", TYPES[self.clone()]) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", Self::TYPE_STRINGS[*self as usize].1) }
 }
 
 impl Display for Type
@@ -46,23 +46,19 @@ impl Display for Type
 
 impl BasicType
 {
-    pub fn as_str(self) -> &'static str { TYPES[self] }
+    pub const TYPE_STRINGS: [(Self, &'static str); Self::COUNT] = [
+        (BasicType::Int, "int"),
+        (BasicType::Bool, "bool"),
+        (BasicType::Char, "char"),
+        (BasicType::String, "string"),
+    ];
+
+    pub fn as_str(self) -> &'static str { Self::TYPE_STRINGS[self as usize].1 }
 }
-
-static TYPES: LazyLock<EnumMap<BasicType, &'static str>> = LazyLock::new(|| {
-    use BasicType as B;
-
-    enum_map! {
-        B::Int => "int",
-        B::Bool => "bool",
-        B::Char => "char",
-        B::String => "string"
-    }
-});
 
 fn parse_basic_type(input: Span) -> ParseResult<Type>
 {
-    alt(TYPES.map(|ty, label| value(ty, tag(label))).into_array())
+    alt(BasicType::TYPE_STRINGS.map(|(ty, label)| value(ty, tag(label))))
         .context("Expected a basic type (int, bool, char or string)")
         .map(|ty| Type::BasicType(ty))
         .parse(input)
