@@ -19,7 +19,7 @@ use crate::frontend::{
     parsers::{ParseResult, Span, types::BasicType},
 };
 
-#[derive(Enum, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum Keyword
 {
     Cond,
