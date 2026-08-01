@@ -141,7 +141,7 @@ impl CompileError
         )
     }
 
-    fn translate_error_kind(error: ErrorVariant) -> Option<String>
+    fn translate_error_kind(error: &ErrorVariant) -> Option<String>
     {
         match error
         {
@@ -168,7 +168,7 @@ impl CompileError
 
     fn tree_base(loc: Span, error: ErrorVariant) -> Self
     {
-        let (summary, label_msg) = Self::translate_error_kind(error)
+        let (summary, label_msg) = Self::translate_error_kind(&error)
             .map(|x| Self::expectation_format(x, loc.fragment()))
             .unwrap_or_else(|| ("Syntax error".into(), "error occurred here".into()));
 
@@ -181,20 +181,18 @@ impl CompileError
         }
     }
 
-    fn format_list<T: Display>(items: Vec<T>, ending: &str) -> String
+    fn format_list<T: Display>(items: &[T], ending: &str) -> String
     {
         const MAX: usize = 4;
-        let length = items.len();
-
-        match length
+        match items
         {
-            0 => "".into(),
-            1 => items.first().unwrap().to_string(),
-            l if l <= MAX => format!(
+            [] => "".into(),
+            [item] => item.to_string(),
+            [is @ .., end] if is.len() <= MAX => format!(
                 "{} {} {}",
-                items.iter().take(l - 1).join(","),
+                is.iter().join(","),
                 ending,
-                items.last().unwrap()
+                end
             ),
             _ => format!("{} ...", items.iter().take(MAX).join(", ")),
         }
@@ -206,7 +204,7 @@ impl CompileError
             .into_iter()
             .map(|x| match x
             {
-                ErrorTree::Base { location, kind } => (location, Self::translate_error_kind(kind).unwrap()),
+                ErrorTree::Base { location, kind } => (location, Self::translate_error_kind(&kind).unwrap()),
                 _ => todo!(),
             })
             .collect();
@@ -229,11 +227,6 @@ impl<'a> From<ErrorTree<Span<'a>>> for CompileError
         match value {
             ErrorTree::Base { location, kind } => Self::tree_base(location, kind),
             ErrorTree::Stack { base, contexts } => {
-                let mut err = Self::from(*base);
-                for (loc, ctx) in contexts {
-                    // err.builder.push_context(loc, ctx.to_string());
-                }
-                err
             }
             ErrorTree::Alt(alts) => Self::tree_alt(alts),
         }
