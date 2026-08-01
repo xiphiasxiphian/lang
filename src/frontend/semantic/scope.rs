@@ -104,7 +104,7 @@ impl Scopes
     {
         self.local.get(name).cloned().unwrap_or_else(|| {
             self.parent.get(name).cloned().unwrap_or_else(|| {
-                self.errors.borrow_mut().push(CompileError::blank_error());
+                self.errors.borrow_mut().push(CompileError::default());
                 self.new_global_symbol(Type::Void, name.clone())
             })
         })
@@ -116,7 +116,7 @@ impl Scopes
         {
             // Define Error Here
             /* TEMPORARY */
-            self.errors.borrow_mut().push(CompileError::blank_error());
+            self.errors.borrow_mut().push(CompileError::default());
         }
     }
 
@@ -167,7 +167,7 @@ impl Scopes
                 .insert_func(func_uid.clone(), Some(type_info))
                 .inspect(|_x| {
                     // TODO: Temporary Error
-                    scope.errors.borrow_mut().push(CompileError::blank_error());
+                    scope.errors.borrow_mut().push(CompileError::default());
                 });
 
             Func {

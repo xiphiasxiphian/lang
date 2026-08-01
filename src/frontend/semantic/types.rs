@@ -177,7 +177,7 @@ impl<'a> TypeChecker<'a>
         prog.funcs.iter().for_each(|x| {
             _ = self.check_func(x).assert_known(|| {
                 // TODO: Temporary Error
-                self.errors.push(CompileError::blank_error());
+                self.errors.push(CompileError::default());
             });
         });
     }
@@ -187,7 +187,7 @@ impl<'a> TypeChecker<'a>
         ty.clone().satisfies_then(c).ok_or_else(|| {
             // Temporary Error, TODO: Add proper type error
             self.errors
-                .push(CompileError::raw_error(format!("contraint: {c:?} ty: {ty}",)));
+                .push(CompileError::default());
             TypeCheckError::Error
         })
     }
@@ -207,14 +207,14 @@ impl<'a> TypeChecker<'a>
                 if info.params.len() != ps.len()
                 {
                     // TODO: Report Error
-                    self.errors.push(CompileError::blank_error());
+                    self.errors.push(CompileError::default());
                 }
 
                 for (p, ty) in ps.iter().zip(info.params)
                 {
                     _ = self.check_expr(p, &TypeContraint::Is(ty)).assert_known(|| {
                         // TODO: Temporary Error
-                        self.errors.push(CompileError::blank_error());
+                        self.errors.push(CompileError::default());
                     });
                 }
 
@@ -229,7 +229,7 @@ impl<'a> TypeChecker<'a>
                 {
                     _ = self.check_expr(ele, &TypeContraint::Any).assert_known(|| {
                         // TODO: Temporary Error
-                        self.errors.push(CompileError::blank_error());
+                        self.errors.push(CompileError::default());
                     });
                 }
 
@@ -424,7 +424,7 @@ impl<'a> TypeChecker<'a>
             // Report Error. TODO: Temporary Error
             if let Err(TypeCheckError::Error) = x
             {
-                self.errors.push(CompileError::blank_error());
+                self.errors.push(CompileError::default());
             }
         })
     }

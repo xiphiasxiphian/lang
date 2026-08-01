@@ -12,6 +12,7 @@ nom-language = "0.1.0"
 datatest-stable = "0.3.2"
 assert_cmd = "2.0.17"
 strum = { version = "0.28.0", features = ["derive"] }
+ariadne = "0.6.0"
 
 [[test]]
 name = "runner"

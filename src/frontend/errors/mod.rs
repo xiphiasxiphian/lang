@@ -1,5 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::Range, str};
 
+use ariadne::{Color, Label, Report, ReportKind, Source};
 use itertools::Itertools;
 use nom::error::ErrorKind;
 use nom_supreme::error::{BaseErrorKind, ErrorTree, Expectation};
@@ -7,94 +8,125 @@ use nom_supreme::error::{BaseErrorKind, ErrorTree, Expectation};
 use crate::{
     common::ScopeMethods,
     frontend::{
-        errors::builder::{ErrorBuilder, LineAttachment, SourceLine},
         parsers::{Span, types::Type},
         semantic::types::TypeContraint,
     },
 };
-
-pub mod builder;
 
 type ErrorVariant = BaseErrorKind<&'static str, Box<dyn std::error::Error + Send + Sync + 'static >>;
 
 #[derive(Clone, Debug)]
 pub struct CompileError
 {
-    builder: ErrorBuilder,
+    kind: ReportKind<'static>,
+    summary: String,
+    location: usize,
+    labels: Vec<(Range<usize>, String, Option<Color>)>,
+    context: Vec<(usize, String)>,
+}
+
+impl Default for CompileError
+{
+    fn default() -> Self
+    {
+        Self {
+            kind: ReportKind::Error,
+            summary: "[Error] Compile Error".into(),
+            location: 0,
+            labels: vec![],
+            context: vec![],
+        }
+    }
 }
 
 impl CompileError
 {
-    pub fn format(self) -> String { self.builder.result() }
+    pub fn format(&self, filename: &str, source: &str) -> String
+    {
+        let primary_range = self.location..self.location;
+
+        let mut buf = vec![];
+        Report::build(self.kind, (filename, primary_range))
+            .with_message(&self.summary)
+            .with_labels(
+                self.labels.iter().map(|(range, msg, color)| {
+                    Label::new((filename, range.clone()))
+                        .with_message(msg)
+                        .with_color(color.unwrap_or_default())
+                })
+            )
+            .with_labels(
+                self.context.iter().map(|(offset, ctx)| {
+                    Label::new((filename, *offset..*offset))
+                        .with_message(format!("while parsing {ctx}"))
+                })
+            )
+            .finish()
+            .write((filename, Source::from(source)), &mut buf)
+            .unwrap();
+
+        String::from_utf8(buf).unwrap()
+    }
 
     // List of Error Type Generators
-    pub fn blank_error() -> Self
-    {
-        Self {
-            builder: ErrorBuilder::new(),
-        }
-    }
+    // pub fn syntax_error(from: Span, context: Option<(String, String)>) -> Self
+    // {
+    //     let (summary, reason) = context.unwrap_or_else(|| {
+    //         (
+    //             format!("Error while parsing \"{}\"", from.fragment()),
+    //             "Error while parsing here".into(),
+    //         )
+    //     });
 
-    pub fn raw_error(raw: String) -> Self
-    {
-        Self {
-            builder: ErrorBuilder::new().also_mut(|x| {
-                x.with_summary(raw);
-            }),
-        }
-    }
+    //     let raw_line: String = str::from_utf8(from.get_line_beginning())
+    //         .expect("Failed to convert bytes into string")
+    //         .into();
+    //     let col = from.get_utf8_column();
+    //     let range = from.fragment().len().scope(|x| (col - 1)..(col + x - 1));
 
-    pub fn syntax_error(from: Span, context: Option<(String, String)>) -> Self
-    {
-        let (summary, reason) = context.unwrap_or_else(|| {
-            (
-                format!("Error while parsing \"{}\"", from.fragment()),
-                "Error while parsing here".into(),
-            )
-        });
+    //     let line = SourceLine::new(raw_line, from.location_line() as usize).also_mut(|x| {
+    //         x.add_attachment(LineAttachment::Highlight('^', range, Some(reason)));
+    //     });
 
-        let raw_line: String = str::from_utf8(from.get_line_beginning())
-            .expect("Failed to convert bytes into string")
-            .into();
-        let col = from.get_utf8_column();
-        let range = from.fragment().len().scope(|x| (col - 1)..(col + x - 1));
+    //     let builder = ErrorBuilder::new()
+    //         .with_type("Syntax Error".into())
+    //         .with_summary(summary)
+    //         .with_location("".into(), from.location_line() as usize, col)
+    //         .with_source_line(line);
 
-        let line = SourceLine::new(raw_line, from.location_line() as usize).also_mut(|x| {
-            x.add_attachment(LineAttachment::Highlight('^', range, Some(reason)));
-        });
+    //     Self { builder }
+    // }
 
-        let builder = ErrorBuilder::new().also_mut(|x| {
-            x.with_type("Syntax Error".into())
-                .with_summary(summary)
-                .with_location("".into(), from.location_line() as usize, col)
-                .with_source_line(line);
-        });
+    // pub fn type_error(from: Span, constraint: TypeContraint, found: Type) -> Self
+    // {
+    //     let expectation = match constraint
+    //     {
+    //         TypeContraint::Is(ty) => format!("which doesn't match expected {ty}"),
+    //         TypeContraint::IsComparibleTo(ty) => format!("which is not comparible to {ty}"),
+    //         _ => unreachable!(),
+    //     };
 
-        Self { builder }
-    }
+    //     let summary = format!("Unexpected type {found}");
+    //     let reason = format!("Found {found} here, {expectation}");
 
-    pub fn type_error(from: Span, constraint: TypeContraint, found: Type)
-    {
-        let expectation = match constraint
-        {
-            TypeContraint::Is(ty) => format!("which doesn't match expected {ty}"),
-            TypeContraint::IsComparibleTo(ty) => format!("which is not comparible to {ty}"),
-            _ => unreachable!(),
-        };
+    //     let raw_line: String = str::from_utf8(from.get_line_beginning())
+    //         .expect("Failed to convert bytes into string")
+    //         .into();
+    //     let col = from.get_utf8_column();
+    //     let range = from.fragment().len().scope(|x| (col - 1)..(col + x - 1));
 
-        let _summary = format!("Unexpected type {found}");
-        let reason = format!("Found {found} here, {expectation}");
+    //     let line = SourceLine::new(raw_line, from.location_line() as usize).also_mut(|x| {
+    //         x.add_attachment(LineAttachment::Highlight('^', range, Some(reason)));
+    //     });
 
-        let raw_line: String = str::from_utf8(from.get_line_beginning())
-            .expect("Failed to convert bytes into string")
-            .into();
-        let col = from.get_utf8_column();
-        let range = from.fragment().len().scope(|x| (col - 1)..(col + x - 1));
-
-        let _line = SourceLine::new(raw_line, from.location_line() as usize).also_mut(|x| {
-            x.add_attachment(LineAttachment::Highlight('^', range, Some(reason)));
-        });
-    }
+    //     Self {
+    //         builder: ErrorBuilder::new()
+    //             .with_type("Type Error".into())
+    //             .with_summary(summary)
+    //             .with_location("".into(), from.location_line() as usize, col)
+    //             .with_source_line(line)
+    //     }
+    // }
 
     // Helpers for converting ErrorTree into CompileError
 
@@ -136,10 +168,17 @@ impl CompileError
 
     fn tree_base(loc: Span, error: ErrorVariant) -> Self
     {
-        Self::syntax_error(
-            loc,
-            Self::translate_error_kind(error).map(|x| Self::expectation_format(x, loc.fragment())),
-        )
+        let (summary, label_msg) = Self::translate_error_kind(error)
+            .map(|x| Self::expectation_format(x, loc.fragment()))
+            .unwrap_or_else(|| ("Syntax error".into(), "error occurred here".into()));
+
+        CompileError {
+            kind: ReportKind::Error,
+            summary,
+            location: loc.location_offset(),
+            labels: vec![(loc.location_offset()..loc.location_offset() + loc.fragment().len(), label_msg, Some(Color::Red))],
+            context: vec![],
+        }
     }
 
     fn format_list<T: Display>(items: Vec<T>, ending: &str) -> String
@@ -172,25 +211,31 @@ impl CompileError
             })
             .collect();
 
-        Self::syntax_error(
-            results[0].0,
-            Some(Self::expectation_format(
-                Self::format_list(results.iter().map(|x| x.1.clone()).collect(), "or"),
-                results[0].0.fragment(),
-            )),
-        )
+        // Self::syntax_error(
+        //     results[0].0,
+        //     Some(Self::expectation_format(
+        //         Self::format_list(results.iter().map(|x| x.1.clone()).collect(), "or"),
+        //         results[0].0.fragment(),
+        //     )),
+        // )
+
+        todo!()
     }
 }
 
 impl<'a> From<ErrorTree<Span<'a>>> for CompileError
 {
-    fn from(value: ErrorTree<Span<'a>>) -> Self
-    {
-        match value
-        {
+    fn from(value: ErrorTree<Span<'a>>) -> Self {
+        match value {
             ErrorTree::Base { location, kind } => Self::tree_base(location, kind),
-            ErrorTree::Stack { base, contexts: _ } => Self::from(*base),
-            ErrorTree::Alt(bs) => Self::blank_error().also(|_| println!("Alt Error {:?}", bs)),
+            ErrorTree::Stack { base, contexts } => {
+                let mut err = Self::from(*base);
+                for (loc, ctx) in contexts {
+                    // err.builder.push_context(loc, ctx.to_string());
+                }
+                err
+            }
+            ErrorTree::Alt(alts) => Self::tree_alt(alts),
         }
     }
 }

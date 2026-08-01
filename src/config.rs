@@ -156,8 +156,9 @@ impl Config
 
     fn compile_helper(&self) -> Result<(), Status>
     {
-        let _prog = frontend(&self.read_file().map_err(|x| Status::Config(x))?)
-            .map_err(|es| Status::Compile(es.into_iter().map(|x| x.format()).collect()))?;
+        let source = self.read_file().map_err(|x| Status::Config(x))?;
+        let _prog = frontend(&source)
+            .map_err(|es| Status::Compile(es.iter().map(|x| x.format(&self.filename, &source)).collect()))?;
 
         // let bytes = backend(prog).map_err(|_| Status::Compile(vec![]))?;
         // let output_path = self.output
